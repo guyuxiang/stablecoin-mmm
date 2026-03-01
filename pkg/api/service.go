@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"sync"
@@ -434,11 +435,13 @@ func (s *Server) handleBalance(c *gin.Context) {
 
 	token0Balance, err := s.executor.GetTokenBalance(ctx, token0Addr, walletAddr)
 	if err != nil {
+		log.Printf("Error getting token0 balance: %v", err)
 		token0Balance = big.NewInt(0)
 	}
 
 	token1Balance, err := s.executor.GetTokenBalance(ctx, token1Addr, walletAddr)
 	if err != nil {
+		log.Printf("Error getting token1 balance: %v", err)
 		token1Balance = big.NewInt(0)
 	}
 
