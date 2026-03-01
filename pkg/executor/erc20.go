@@ -2,12 +2,15 @@ package executor
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -70,6 +73,36 @@ func (e *ERC20) Allowance(ctx context.Context, owner, spender common.Address) (*
 
 	allowance := new(big.Int).SetBytes(result)
 	return allowance, nil
+}
+
+func (e *ERC20) Approve(ctx context.Context, privateKey *ecdsa.PrivateKey, spender common.Address, amount *big.Int, chainID int64) (*types.Transaction, error) {
+	data, err := e.abi.Pack("approve", spender, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, err := e.client.PendingNonceAt(ctx, crypto.PubkeyToAddress(privateKey.PublicKey))
+	if err != nil {
+		return nil, err
+	}
+
+	gasPrice, err := e.client.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(nonce, e.addr, big.NewInt(0), 100000, gasPrice, data)
+	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(big.NewInt(chainID)), privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	err = e.client.SendTransaction(ctx, signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	return signedTx, nil
 }
 
 func GetTokenBalance(ctx context.Context, client *ethclient.Client, tokenAddr, ownerAddr common.Address) (*big.Int, error) {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"log"
+	"math"
 	"math/big"
 	"time"
 
@@ -33,17 +35,18 @@ type ExecutionResult struct {
 }
 
 type Executor struct {
-	cfg           *config.Config
-	ethClient     *ethclient.Client
-	chainID       *big.Int
-	privateKey    *ecdsa.PrivateKey
-	maxRetries    int
+	cfg        *config.Config
+	ethClient  *ethclient.Client
+	chainID    *big.Int
+	privateKey *ecdsa.PrivateKey
+	maxRetries int
 	walletAddress common.Address
 
 	factory     *contracts.Uniswapv3Factory
 	positionMgr *contracts.Uniswapv3NFTPositionManager
 	swapRouter  *contracts.Uniswapv3RouterV2
 	quoter      *contracts.Uniswapv3Quoter
+	pool        *contracts.Uniswapv3Pool
 }
 
 func NewExecutor(cfg *config.Config) (*Executor, error) {
@@ -79,6 +82,11 @@ func NewExecutor(cfg *config.Config) (*Executor, error) {
 		return nil, fmt.Errorf("failed to create quoter: %w", err)
 	}
 
+	pool, err := contracts.NewUniswapv3Pool(common.HexToAddress(cfg.Uniswap.PoolAddress), client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pool: %w", err)
+	}
+
 	return &Executor{
 		cfg:           cfg,
 		ethClient:     client,
@@ -87,9 +95,10 @@ func NewExecutor(cfg *config.Config) (*Executor, error) {
 		maxRetries:    cfg.Execution.RetryTimes,
 		walletAddress: walletAddress,
 		factory:       factory,
-		positionMgr:    positionMgr,
+		positionMgr:   positionMgr,
 		swapRouter:    swapRouter,
 		quoter:        quoter,
+		pool:          pool,
 	}, nil
 }
 
@@ -146,6 +155,29 @@ func (e *Executor) CreatePool(ctx context.Context, token0, token1 common.Address
 }
 
 func (e *Executor) AddLiquidity(ctx context.Context, token0, token1 common.Address, fee uint32, amount0, amount1 *big.Int, tickLower, tickUpper int32) (*ExecutionResult, error) {
+	positionMgrAddr := common.HexToAddress(e.cfg.Uniswap.PositionManager)
+
+	log.Printf("=== AddLiquidity ===")
+	log.Printf("Position Manager: %s", positionMgrAddr.Hex())
+	log.Printf("Token0: %s", token0.Hex())
+	log.Printf("Token1: %s", token1.Hex())
+	log.Printf("Amount0: %s", amount0.String())
+	log.Printf("Amount1: %s", amount1.String())
+	log.Printf("TickLower: %d", tickLower)
+	log.Printf("TickUpper: %d", tickUpper)
+
+	if err := e.ApproveToken(ctx, token0, positionMgrAddr, amount0); err != nil {
+		log.Printf("Approve token0 failed: %v", err)
+		return &ExecutionResult{Success: false, Error: fmt.Errorf("approve token0 failed: %w", err), Timestamp: time.Now()}, err
+	}
+
+	if err := e.ApproveToken(ctx, token1, positionMgrAddr, amount1); err != nil {
+		log.Printf("Approve token1 failed: %v", err)
+		return &ExecutionResult{Success: false, Error: fmt.Errorf("approve token1 failed: %w", err), Timestamp: time.Now()}, err
+	}
+
+	log.Printf("All approvals done, now minting...")
+
 	auth, err := bind.NewKeyedTransactorWithChainID(e.privateKey, e.chainID)
 	if err != nil {
 		return &ExecutionResult{Success: false, Error: err, Timestamp: time.Now()}, err
@@ -165,6 +197,7 @@ func (e *Executor) AddLiquidity(ctx context.Context, token0, token1 common.Addre
 		Deadline:       big.NewInt(time.Now().Unix() + 300),
 	}
 
+	log.Printf("mint params: ", params)
 	tx, err := e.positionMgr.Mint(auth, params)
 	if err != nil {
 		return &ExecutionResult{Success: false, Error: err, Timestamp: time.Now()}, err
@@ -190,6 +223,43 @@ func (e *Executor) AddLiquidity(ctx context.Context, token0, token1 common.Addre
 		TokenID:   tokenID,
 		Timestamp: time.Now(),
 	}, nil
+}
+
+func (e *Executor) ApproveToken(ctx context.Context, tokenAddr, spender common.Address, amount *big.Int) error {
+	erc20, err := NewERC20(tokenAddr, e.ethClient)
+	if err != nil {
+		return err
+	}
+
+	allowance, err := erc20.Allowance(ctx, e.walletAddress, spender)
+	if err != nil {
+		log.Printf("Allowance check failed: %v", err)
+		return err
+	}
+	log.Printf("Current allowance for %s: %s", tokenAddr.Hex(), allowance.String())
+
+	if allowance.Cmp(amount) >= 0 {
+		log.Printf("Allowance sufficient, skipping approve")
+		return nil
+	}
+
+	log.Printf("Approving %s to spend %s...", spender.Hex(), amount.String())
+	tx, err := erc20.Approve(ctx, e.privateKey, spender, big.NewInt(0).Mul(amount, big.NewInt(2)), e.chainID.Int64())
+	if err != nil {
+		log.Printf("Approve failed: %v", err)
+		return err
+	}
+
+	log.Printf("Approve tx sent: %s", tx.Hash().Hex())
+
+	receipt, err := waitForReceipt(ctx, e.ethClient, tx)
+	if err != nil {
+		log.Printf("Approve receipt error: %v", err)
+		return err
+	}
+
+	log.Printf("Approve tx status: %d", receipt.Status)
+	return nil
 }
 
 func (e *Executor) ExecuteSwap(ctx context.Context, tokenIn, tokenOut common.Address, amountIn *big.Int, amountOutMin *big.Int, sqrtPriceLimitX96 *big.Int) (*ExecutionResult, error) {
@@ -303,8 +373,9 @@ func PriceToTick(price float64) int32 {
 	if price <= 0 {
 		return 0
 	}
-	tick := 0
-	return int32(tick)
+	sqrtPrice := math.Sqrt(price)
+	tick := math.Log(sqrtPrice) / math.Log(1.0001)
+	return int32(math.Floor(tick))
 }
 
 func TickToPrice(tick int32) float64 {
@@ -315,8 +386,179 @@ func uint24(v uint32) *big.Int {
 	return big.NewInt(int64(v))
 }
 
-func CalculateTickRange(refPrice float64, rangeBps int) (int32, int32) {
+func GetTickSpacing(fee uint32) int32 {
+	switch fee {
+	case 100:
+		return 1
+	case 500:
+		return 10
+	case 3000:
+		return 60
+	case 10000:
+		return 200
+	default:
+		return 10
+	}
+}
+
+func AlignTickToSpacing(tick int32, spacing int32) int32 {
+	if tick < 0 {
+		return (tick / spacing) * spacing
+	}
+	return (tick / spacing) * spacing
+}
+
+func CalculateTickRange(refPrice float64, fee uint32, rangeBps int) (int32, int32) {
 	lower := refPrice * (1 - float64(rangeBps)/10000)
 	upper := refPrice * (1 + float64(rangeBps)/10000)
-	return PriceToTick(lower), PriceToTick(upper)
+	tickLower := PriceToTick(lower)
+	tickUpper := PriceToTick(upper)
+	spacing := GetTickSpacing(fee)
+	tickLower = AlignTickToSpacing(tickLower, spacing)
+	tickUpper = AlignTickToSpacing(tickUpper, spacing)
+	return tickLower, tickUpper
+}
+
+type TierPosition struct {
+	Name      string   `json:"name"`
+	Amount0   *big.Int `json:"amount0"`
+	Amount1   *big.Int `json:"amount1"`
+}
+
+func (e *Executor) GetTierPositions(ctx context.Context) ([]TierPosition, error) {
+	walletAddr := e.walletAddress
+
+	balance, err := e.positionMgr.BalanceOf(&bind.CallOpts{Context: ctx}, walletAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get balance: %w", err)
+	}
+
+	coreAmount0 := big.NewInt(0)
+	coreAmount1 := big.NewInt(0)
+	midAmount0 := big.NewInt(0)
+	midAmount1 := big.NewInt(0)
+	tailAmount0 := big.NewInt(0)
+	tailAmount1 := big.NewInt(0)
+
+	slot0, err := e.pool.Slot0(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slot0: %w", err)
+	}
+
+	sqrtPriceX96 := slot0.SqrtPriceX96
+
+	for i := uint64(0); i < balance.Uint64(); i++ {
+		tokenId, err := e.positionMgr.TokenOfOwnerByIndex(&bind.CallOpts{Context: ctx}, walletAddr, big.NewInt(int64(i)))
+		if err != nil {
+			continue
+		}
+
+		pos, err := e.positionMgr.Positions(&bind.CallOpts{Context: ctx}, tokenId)
+		if err != nil {
+			continue
+		}
+
+		tickLower := int32(pos.TickLower.Int64())
+		tickUpper := int32(pos.TickUpper.Int64())
+		liquidity := pos.Liquidity
+
+		if liquidity.Sign() == 0 {
+			continue
+		}
+
+		amount0, amount1 := e.calculateTokenAmounts(liquidity, tickLower, tickUpper, sqrtPriceX96)
+
+		if tickLower >= -10 && tickUpper <= 10 {
+			coreAmount0.Add(coreAmount0, amount0)
+			coreAmount1.Add(coreAmount1, amount1)
+		} else if tickLower >= -50 && tickUpper <= 50 {
+			midAmount0.Add(midAmount0, amount0)
+			midAmount1.Add(midAmount1, amount1)
+		} else if tickLower >= -200 && tickUpper <= 200 {
+			tailAmount0.Add(tailAmount0, amount0)
+			tailAmount1.Add(tailAmount1, amount1)
+		}
+	}
+
+	return []TierPosition{
+		{Name: "core", Amount0: coreAmount0, Amount1: coreAmount1},
+		{Name: "mid", Amount0: midAmount0, Amount1: midAmount1},
+		{Name: "tail", Amount0: tailAmount0, Amount1: tailAmount1},
+	}, nil
+}
+
+func (e *Executor) calculateTokenAmounts(liquidity *big.Int, tickLower, tickUpper int32, sqrtPriceX96 *big.Int) (*big.Int, *big.Int) {
+	sqrtRatioX96 := sqrtPriceX96
+
+	sqrtLower := e.tickToSqrtRatioX96(tickLower)
+	sqrtUpper := e.tickToSqrtRatioX96(tickUpper)
+
+	oneX96 := new(big.Int).Lsh(big.NewInt(1), 96)
+
+	if liquidity.Sign() == 0 {
+		return big.NewInt(0), big.NewInt(0)
+	}
+
+	if sqrtLower.Sign() == 0 || sqrtUpper.Sign() == 0 || sqrtRatioX96.Sign() == 0 {
+		return big.NewInt(0), big.NewInt(0)
+	}
+
+	currentTick := int32(0)
+	if sqrtRatioX96.Sign() > 0 {
+		currentTick = int32(math.Floor(math.Log(float64(sqrtRatioX96.Uint64())/float64(1<<64)) / math.Log(1.0001)))
+	}
+
+	var amount0, amount1 *big.Int
+
+	if currentTick <= tickLower {
+		amount0 = new(big.Int).Mul(liquidity, new(big.Int).Sub(sqrtUpper, sqrtLower))
+		amount0 = new(big.Int).Div(amount0, sqrtLower)
+		amount0 = new(big.Int).Div(amount0, oneX96)
+		amount1 = big.NewInt(0)
+	} else if currentTick >= tickUpper {
+		amount0 = big.NewInt(0)
+		amount1 = new(big.Int).Mul(liquidity, new(big.Int).Sub(sqrtUpper, sqrtLower))
+		amount1 = new(big.Int).Div(amount1, sqrtUpper)
+		amount1 = new(big.Int).Div(amount1, oneX96)
+	} else {
+		amount0 = new(big.Int).Mul(liquidity, new(big.Int).Sub(sqrtRatioX96, sqrtLower))
+		amount0 = new(big.Int).Div(amount0, sqrtLower)
+		amount0 = new(big.Int).Div(amount0, oneX96)
+
+		amount1 = new(big.Int).Mul(liquidity, new(big.Int).Sub(sqrtUpper, sqrtRatioX96))
+		amount1 = new(big.Int).Div(amount1, sqrtUpper)
+		amount1 = new(big.Int).Div(amount1, oneX96)
+	}
+
+	return amount0, amount1
+}
+
+func (e *Executor) tickToSqrtRatioX96(tick int32) *big.Int {
+	absTick := tick
+	if absTick < 0 {
+		absTick = -absTick
+	}
+
+	ratio := new(big.Int).Lsh(big.NewInt(1), 96)
+
+	pos := absTick / 2
+	for i := int32(0); i < pos; i++ {
+		tmp1, _ := new(big.Int).SetString("79228162514264337593543950336", 10)
+		tmp2, _ := new(big.Int).SetString("999500001833390168889799", 10)
+		ratio = new(big.Int).Mul(ratio, tmp1)
+		ratio = new(big.Int).Div(ratio, tmp2)
+	}
+
+	if absTick%2 == 1 {
+		tmp1, _ := new(big.Int).SetString("79228162514264337593543950336", 10)
+		tmp2, _ := new(big.Int).SetString("999500001833390168889799", 10)
+		ratio = new(big.Int).Mul(ratio, tmp1)
+		ratio = new(big.Int).Div(ratio, tmp2)
+	}
+
+	if tick < 0 {
+		ratio = new(big.Int).Div(new(big.Int).Lsh(big.NewInt(1), 96), ratio)
+	}
+
+	return ratio
 }

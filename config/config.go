@@ -7,12 +7,22 @@ import (
 )
 
 type Config struct {
-	Server    ServerConfig    `yaml:"server"`
-	Uniswap   UniswapConfig   `yaml:"uniswap"`
-	Bot       BotConfig       `yaml:"bot"`
-	Risk      RiskConfig      `yaml:"risk"`
-	Oracle    OracleConfig    `yaml:"oracle"`
-	Execution ExecutionConfig `yaml:"execution"`
+	Server      ServerConfig      `yaml:"server"`
+	Uniswap     UniswapConfig     `yaml:"uniswap"`
+	Bot         BotConfig         `yaml:"bot"`
+	Risk        RiskConfig        `yaml:"risk"`
+	Oracle      OracleConfig      `yaml:"oracle"`
+	Execution   ExecutionConfig  `yaml:"execution"`
+	Stabilization StabilizationConfig `yaml:"stabilization"`
+}
+
+type StabilizationConfig struct {
+	Enabled           bool    `yaml:"enabled"`
+	DeviationBps      int     `yaml:"deviation_bps"`
+	SwapAmountBps     int     `yaml:"swap_amount_bps"`
+	MaxSwapAmount     float64 `yaml:"max_swap_amount"`
+	MinSwapAmount     float64 `yaml:"min_swap_amount"`
+	CooldownSeconds   int     `yaml:"cooldown_seconds"`
 }
 
 type ServerConfig struct {
@@ -44,6 +54,9 @@ type BotConfig struct {
 	TailRangeBps         int     `yaml:"tail_range_bps"`
 	RebalanceThreshold   float64 `yaml:"rebalance_threshold"`
 	RebalanceIntervalSec int     `yaml:"rebalance_interval_seconds"`
+	StabilizationEnabled bool    `yaml:"stabilization_enabled"`
+	StabilizationBps     int     `yaml:"stabilization_bps"`
+	StabilizationCap     float64 `yaml:"stabilization_cap"`
 }
 
 type RiskConfig struct {

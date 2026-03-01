@@ -3,10 +3,13 @@ package rebalancer
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"uniswap-bot/config"
+	"uniswap-bot/pkg/executor"
 	"uniswap-bot/pkg/position"
 	"uniswap-bot/pkg/risk"
 	"uniswap-bot/pkg/uniswap"
@@ -16,20 +19,27 @@ type Rebalancer struct {
 	cfg             *config.Config
 	positionService *position.PositionService
 	riskEngine      *risk.RiskEngine
+	executor        *executor.Executor
 	currentPrice    *big.Float
 	twapPrice       *big.Float
+	refPrice        *big.Float
 	lastRebalance   time.Time
+	lastStabilize   time.Time
 	isRunning       bool
 }
 
-func NewRebalancer(cfg *config.Config, positionService *position.PositionService, riskEngine *risk.RiskEngine) *Rebalancer {
+func NewRebalancer(cfg *config.Config, positionService *position.PositionService, riskEngine *risk.RiskEngine, exec *executor.Executor) *Rebalancer {
+	refPrice := big.NewFloat(cfg.Oracle.RefPrice)
 	return &Rebalancer{
 		cfg:             cfg,
 		positionService: positionService,
 		riskEngine:      riskEngine,
+		executor:        exec,
 		currentPrice:    big.NewFloat(1.0),
 		twapPrice:       big.NewFloat(1.0),
+		refPrice:        refPrice,
 		lastRebalance:   time.Now(),
+		lastStabilize:   time.Now(),
 		isRunning:       false,
 	}
 }
@@ -98,6 +108,13 @@ func (r *Rebalancer) ExecuteRebalance(ctx context.Context) error {
 		return fmt.Errorf("rebalance not needed: %s", reason)
 	}
 
+	if r.cfg.Stabilization.Enabled {
+		stabilizeErr := r.ExecuteStabilization(ctx)
+		if stabilizeErr != nil {
+			log.Printf("Stabilization failed: %v", stabilizeErr)
+		}
+	}
+
 	coreLower, coreUpper, midLower, midUpper, tailLower, tailUpper := r.CalculateRanges()
 
 	r.positionService.AddLayer("core", r.cfg.Bot.CoreRatio, coreLower, coreUpper, big.NewInt(0))
@@ -106,6 +123,116 @@ func (r *Rebalancer) ExecuteRebalance(ctx context.Context) error {
 
 	r.lastRebalance = time.Now()
 
+	return nil
+}
+
+func (r *Rebalancer) ShouldStabilize() (bool, string) {
+	if !r.cfg.Stabilization.Enabled {
+		return false, "stabilization disabled"
+	}
+
+	if r.executor == nil {
+		return false, "executor not available"
+	}
+
+	timeSinceStabilize := time.Since(r.lastStabilize)
+	if timeSinceStabilize < time.Duration(r.cfg.Stabilization.CooldownSeconds)*time.Second {
+		return false, "stabilization cooldown not reached"
+	}
+
+	deviationBps := int(r.calculateDeviation() * 10000)
+	if deviationBps < r.cfg.Stabilization.DeviationBps {
+		return false, fmt.Sprintf("deviation %d bps below threshold %d bps", deviationBps, r.cfg.Stabilization.DeviationBps)
+	}
+
+	return true, fmt.Sprintf("deviation %d bps exceeds threshold %d bps", deviationBps, r.cfg.Stabilization.DeviationBps)
+}
+
+func (r *Rebalancer) ExecuteStabilization(ctx context.Context) error {
+	should, reason := r.ShouldStabilize()
+	if !should {
+		return fmt.Errorf("stabilization not needed: %s", reason)
+	}
+
+	token0Addr := common.HexToAddress(r.cfg.Uniswap.Token0Address)
+	token1Addr := common.HexToAddress(r.cfg.Uniswap.Token1Address)
+
+	walletAddr := r.executor.GetWalletAddress()
+	token0Balance, err := r.executor.GetTokenBalance(ctx, token0Addr, walletAddr)
+	if err != nil {
+		return fmt.Errorf("failed to get token0 balance: %w", err)
+	}
+	token1Balance, err := r.executor.GetTokenBalance(ctx, token1Addr, walletAddr)
+	if err != nil {
+		return fmt.Errorf("failed to get token1 balance: %w", err)
+	}
+
+	priceVal, _ := r.currentPrice.Float64()
+	minSwap := r.cfg.Stabilization.MinSwapAmount
+	maxSwap := r.cfg.Stabilization.MaxSwapAmount
+	swapBps := r.cfg.Stabilization.SwapAmountBps
+
+	var amountIn *big.Int
+	var tokenIn, tokenOut common.Address
+
+	if priceVal > 1.0 {
+		tokenIn = token0Addr
+		tokenOut = token1Addr
+		available := float64(token0Balance.Int64()) / 1e6
+		swapVal := available * float64(swapBps) / 10000
+		if swapVal < minSwap {
+			swapVal = minSwap
+		}
+		if swapVal > maxSwap {
+			swapVal = maxSwap
+		}
+		if swapVal > available {
+			swapVal = available
+		}
+		amountIn = big.NewInt(int64(swapVal * 1e6))
+		log.Printf("=== Stabilization: USDx > 1, selling USDx for USDT ===")
+		log.Printf("Price: %.6f, Selling USDx: %.2f", priceVal, swapVal)
+	} else {
+		tokenIn = token1Addr
+		tokenOut = token0Addr
+		available := float64(token1Balance.Int64()) / 1e6
+		swapVal := available * float64(swapBps) / 10000
+		if swapVal < minSwap {
+			swapVal = minSwap
+		}
+		if swapVal > maxSwap {
+			swapVal = maxSwap
+		}
+		if swapVal > available {
+			swapVal = available
+		}
+		amountIn = big.NewInt(int64(swapVal * 1e6))
+		log.Printf("=== Stabilization: USDx < 1, buying USDx with USDT ===")
+		log.Printf("Price: %.6f, Buying USDx: %.2f", priceVal, swapVal)
+	}
+
+	if amountIn.Cmp(big.NewInt(0)) <= 0 {
+		return fmt.Errorf("swap amount is zero or negative")
+	}
+
+	amountOutMin := big.NewInt(0)
+	slippageBps := int64(r.cfg.Execution.MaxSlippageBps)
+	amountOutMin = new(big.Int).Mul(amountIn, big.NewInt(10000-slippageBps))
+	amountOutMin = new(big.Int).Div(amountOutMin, big.NewInt(10000))
+
+	result, err := r.executor.ExecuteSwap(ctx, tokenIn, tokenOut, amountIn, amountOutMin, big.NewInt(0))
+	if err != nil {
+		return fmt.Errorf("stabilization swap failed: %w", err)
+	}
+
+	if !result.Success {
+		return fmt.Errorf("stabilization tx failed: %s", result.TxHash)
+	}
+
+	log.Printf("Stabilization successful! Tx: %s, AmountIn: %s, AmountOut: %s", 
+		result.TxHash, amountIn.String(), result.Amount0.String())
+
+	r.lastStabilize = time.Now()
 	return nil
 }
 

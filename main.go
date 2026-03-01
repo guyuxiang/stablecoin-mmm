@@ -19,6 +19,7 @@ import (
 
 	"uniswap-bot/config"
 	"uniswap-bot/pkg/api"
+	"uniswap-bot/pkg/executor"
 	"uniswap-bot/pkg/monitor"
 	"uniswap-bot/pkg/oracle"
 	"uniswap-bot/pkg/position"
@@ -296,10 +297,15 @@ func NewBot() (*Bot, error) {
 		return nil, fmt.Errorf("failed to create uniswap client: %w", err)
 	}
 
+	exec, err := executor.NewExecutor(cfg)
+	if err != nil {
+		log.Printf("Warning: Failed to create executor: %v", err)
+	}
+
 	positionService := position.NewPositionService()
 	riskEngine := risk.NewRiskEngine(cfg)
 	priceOracle := oracle.NewPriceOracle(cfg, uniswapClient)
-	rebalancerSvc := rebalancer.NewRebalancer(cfg, positionService, riskEngine)
+	rebalancerSvc := rebalancer.NewRebalancer(cfg, positionService, riskEngine, exec)
 	monitorSvc := monitor.NewMonitor(positionService, riskEngine, rebalancerSvc)
 	apiServer := api.NewServer(cfg, positionService, riskEngine, rebalancerSvc, monitorSvc)
 

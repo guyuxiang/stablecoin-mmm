@@ -118,10 +118,23 @@ func (s *Server) handleMetrics(c *gin.Context) {
 }
 
 func (s *Server) handlePositions(c *gin.Context) {
-	layers := s.positionSvc.GetLayers()
+	if s.executor == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "executor not initialized"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	positions, err := s.executor.GetTierPositions(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"layers": layers,
-		"total":  len(layers),
+		"layers": positions,
+		"total":  len(positions),
 	})
 }
 
@@ -273,67 +286,91 @@ func (s *Server) handleAddLiquidity(c *gin.Context) {
 		fee = uint32(s.cfg.Uniswap.FeeTier)
 	}
 
-	amount0, ok := new(big.Int).SetString(req.Amount0, 10)
+	totalAmount0, ok := new(big.Int).SetString(req.Amount0, 10)
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amount0"})
 		return
 	}
-	amount1, ok := new(big.Int).SetString(req.Amount1, 10)
+	totalAmount1, ok := new(big.Int).SetString(req.Amount1, 10)
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amount1"})
 		return
 	}
 
-	tickLower := req.TickLower
-	tickUpper := req.TickUpper
-	if tickLower == 0 && tickUpper == 0 {
-		tickLower, tickUpper = executor.CalculateTickRange(s.cfg.Oracle.RefPrice, s.cfg.Bot.CoreRangeBps)
-	}
+	coreLower, coreUpper := int32(-10), int32(10)
+	midLower, midUpper := int32(-50), int32(50)
+	tailLower, tailUpper := int32(-200), int32(200)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	coreAmount0 := new(big.Int).Mul(totalAmount0, big.NewInt(int64(s.cfg.Bot.CoreRatio*100)))
+	coreAmount0 = new(big.Int).Div(coreAmount0, big.NewInt(100))
+	coreAmount1 := new(big.Int).Mul(totalAmount1, big.NewInt(int64(s.cfg.Bot.CoreRatio*100)))
+	coreAmount1 = new(big.Int).Div(coreAmount1, big.NewInt(100))
+
+	midAmount0 := new(big.Int).Mul(totalAmount0, big.NewInt(int64(s.cfg.Bot.MidRatio*100)))
+	midAmount0 = new(big.Int).Div(midAmount0, big.NewInt(100))
+	midAmount1 := new(big.Int).Mul(totalAmount1, big.NewInt(int64(s.cfg.Bot.MidRatio*100)))
+	midAmount1 = new(big.Int).Div(midAmount1, big.NewInt(100))
+
+	tailAmount0 := new(big.Int).Mul(totalAmount0, big.NewInt(int64(s.cfg.Bot.TailRatio*100)))
+	tailAmount0 = new(big.Int).Div(tailAmount0, big.NewInt(100))
+	tailAmount1 := new(big.Int).Mul(totalAmount1, big.NewInt(int64(s.cfg.Bot.TailRatio*100)))
+	tailAmount1 = new(big.Int).Div(tailAmount1, big.NewInt(100))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	result, err := s.executor.AddLiquidity(ctx, token0, token1, fee, amount0, amount1, tickLower, tickUpper)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	results := []gin.H{}
 
-	if !result.Success {
-		c.JSON(http.StatusOK, gin.H{
-			"success":     false,
-			"tx_hash":     result.TxHash,
-			"gas_used":    result.GasUsed,
-			"error":       result.Error.Error(),
-			"error_code":  result.ErrorCode,
-			"verified":    false,
-			"verification": "transaction failed on chain",
+	if coreAmount0.Cmp(big.NewInt(0)) > 0 && coreAmount1.Cmp(big.NewInt(0)) > 0 {
+		result, err := s.executor.AddLiquidity(ctx, token0, token1, fee, coreAmount0, coreAmount1, coreLower, coreUpper)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("core liquidity failed: %v", err)})
+			return
+		}
+		results = append(results, gin.H{
+			"layer":     "core",
+			"tx_hash":   result.TxHash,
+			"token_id":  result.TokenID.String(),
+			"success":   result.Success,
+			"tickLower": coreLower,
+			"tickUpper": coreUpper,
 		})
-		return
 	}
 
-	verified := true
-	verificationMsg := "transaction successful"
-	if result.BalanceChange0 != nil && result.BalanceChange0.Cmp(big.NewInt(0)) < 0 {
-		verified = false
-		verificationMsg = "token0 balance not changed as expected"
+	if midAmount0.Cmp(big.NewInt(0)) > 0 && midAmount1.Cmp(big.NewInt(0)) > 0 {
+		result, err := s.executor.AddLiquidity(ctx, token0, token1, fee, midAmount0, midAmount1, midLower, midUpper)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("mid liquidity failed: %v", err)})
+			return
+		}
+		results = append(results, gin.H{
+			"layer":     "mid",
+			"tx_hash":   result.TxHash,
+			"token_id":  result.TokenID.String(),
+			"success":   result.Success,
+			"tickLower": midLower,
+			"tickUpper": midUpper,
+		})
 	}
-	if result.BalanceChange1 != nil && result.BalanceChange1.Cmp(big.NewInt(0)) < 0 {
-		verified = false
-		verificationMsg = "token1 balance not changed as expected"
+
+	if tailAmount0.Cmp(big.NewInt(0)) > 0 && tailAmount1.Cmp(big.NewInt(0)) > 0 {
+		result, err := s.executor.AddLiquidity(ctx, token0, token1, fee, tailAmount0, tailAmount1, tailLower, tailUpper)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("tail liquidity failed: %v", err)})
+			return
+		}
+		results = append(results, gin.H{
+			"layer":     "tail",
+			"tx_hash":   result.TxHash,
+			"token_id":  result.TokenID.String(),
+			"success":   result.Success,
+			"tickLower": tailLower,
+			"tickUpper": tailUpper,
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":          true,
-		"tx_hash":          result.TxHash,
-		"token_id":         result.TokenID.String(),
-		"amount0":          result.Amount0.String(),
-		"amount1":          result.Amount1.String(),
-		"gas_used":         result.GasUsed,
-		"tick_lower":       tickLower,
-		"tick_upper":       tickUpper,
-		"verified":         verified,
-		"verification_msg": verificationMsg,
+		"results": results,
 	})
 }
 

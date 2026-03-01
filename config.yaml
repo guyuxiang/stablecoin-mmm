@@ -11,8 +11,8 @@ uniswap:
   position_manager: "0xB7F724d6dDDFd008eFf5cc2834edDE5F9eF0d075"
   swap_router: "0xd1AAE39293221B77B0C71fBD6dCb7Ea29Bb5B166"
   fee_tier: 500
-  token0_address: "0x948e15b38f096d3a664fdeef44c13709732b2110"
-  token1_address: "0x2d7efff683b0a21e0989729e0249c42cdf9ee442"
+  token0_address: "0x2d7efff683b0a21e0989729e0249c42cdf9ee442"
+  token1_address: "0x948e15b38f096d3a664fdeef44c13709732b2110"
 
 bot:
   private_key: "298149d01f7a23cb938ab6874ea345516479fb70bd5e14c99c0ffaf84798ca80"
@@ -42,3 +42,11 @@ execution:
   max_slippage_bps: 30
   deadline_seconds: 300
   retry_times: 3
+
+stabilization:
+  enabled: true
+  deviation_bps: 30
+  swap_amount_bps: 10
+  max_swap_amount: 10000
+  min_swap_amount: 100
+  cooldown_seconds: 60

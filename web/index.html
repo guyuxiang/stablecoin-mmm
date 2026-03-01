@@ -3,22 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Bot Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Stablecoin MM Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --border-color: #30363d;
-            --text-primary: #f0f6fc;
-            --text-secondary: #8b949e;
-            --text-muted: #6e7681;
-            --accent-blue: #58a6ff;
-            --accent-green: #3fb950;
-            --accent-red: #f85149;
-            --accent-purple: #a371f7;
-            --accent-orange: #d29922;
+            --bg-primary: #f8f9fb;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f3f5;
+            --border-color: #e9ecef;
+            --border-strong: #dee2e6;
+            --text-primary: #212529;
+            --text-secondary: #495057;
+            --text-muted: #868e96;
+            --accent-blue: #228be6;
+            --accent-green: #40c057;
+            --accent-red: #fa5252;
+            --accent-purple: #7950f2;
+            --accent-orange: #fd7e14;
+            --accent-teal: #12b886;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.08);
         }
 
         * {
@@ -28,11 +33,11 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
         .container {
@@ -41,64 +46,77 @@
             padding: 24px;
         }
 
-        /* Header */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 24px;
+            padding: 20px 28px;
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 16px;
             margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
         }
 
         .logo {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
         }
 
         .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #ff007a, #7b2ff7);
-            border-radius: 10px;
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #228be6, #7950f2);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
+            box-shadow: var(--shadow-md);
         }
 
         .logo-text {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 600;
-            background: linear-gradient(90deg, #ff007a, #7b2ff7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 400;
         }
 
         .header-status {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
         }
 
         .status-dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
         .status-dot.running {
             background: var(--accent-green);
-            box-shadow: 0 0 10px var(--accent-green);
         }
 
         .status-dot.stopped {
             background: var(--accent-red);
-            box-shadow: 0 0 10px var(--accent-red);
             animation: none;
         }
 
@@ -108,26 +126,25 @@
         }
 
         .status-text {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
         }
 
         .status-text.running { color: var(--accent-green); }
         .status-text.stopped { color: var(--accent-red); }
 
-        /* Navigation */
         .nav {
             display: flex;
-            gap: 8px;
+            gap: 4px;
             margin-bottom: 24px;
             background: var(--bg-secondary);
-            padding: 8px;
+            padding: 6px;
             border-radius: 12px;
             border: 1px solid var(--border-color);
         }
 
         .nav-item {
-            padding: 10px 20px;
+            padding: 12px 24px;
             background: transparent;
             border: none;
             border-radius: 8px;
@@ -144,16 +161,16 @@
         }
 
         .nav-item.active {
-            background: var(--accent-purple);
+            background: var(--text-primary);
             color: white;
         }
 
-        /* Cards */
         .card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 24px;
+            box-shadow: var(--shadow-sm);
         }
 
         .card-header {
@@ -166,12 +183,12 @@
         }
 
         .card-title {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             color: var(--text-primary);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         .card-title-icon {
@@ -185,7 +202,6 @@
             font-size: 16px;
         }
 
-        /* Grid */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -201,11 +217,11 @@
             .grid-2 { grid-template-columns: 1fr; }
         }
 
-        /* Stats */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 16px;
+            margin-bottom: 24px;
         }
 
         @media (max-width: 1024px) {
@@ -213,10 +229,11 @@
         }
 
         .stat-card {
-            background: var(--bg-tertiary);
-            border-radius: 10px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
             padding: 20px;
             border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
         }
 
         .stat-label {
@@ -225,12 +242,14 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
+            font-weight: 500;
         }
 
         .stat-value {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 26px;
+            font-weight: 600;
             color: var(--text-primary);
+            font-family: 'IBM Plex Mono', monospace;
         }
 
         .stat-value.green { color: var(--accent-green); }
@@ -238,7 +257,12 @@
         .stat-value.blue { color: var(--accent-blue); }
         .stat-value.purple { color: var(--accent-purple); }
 
-        /* Form */
+        .stat-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
         .form-group {
             margin-bottom: 16px;
         }
@@ -254,22 +278,18 @@
         .form-input {
             width: 100%;
             padding: 12px 14px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-strong);
             border-radius: 8px;
             color: var(--text-primary);
             font-size: 14px;
-            font-family: 'Monaco', 'Consolas', monospace;
+            font-family: 'IBM Plex Mono', monospace;
             transition: border-color 0.2s;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--accent-purple);
-        }
-
-        .form-input::placeholder {
-            color: var(--text-muted);
+            border-color: var(--accent-blue);
         }
 
         .form-row {
@@ -278,7 +298,6 @@
             gap: 12px;
         }
 
-        /* Buttons */
         .btn {
             padding: 12px 24px;
             border: none;
@@ -294,37 +313,37 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #ff007a, #7b2ff7);
+            background: linear-gradient(135deg, #228be6, #7950f2);
             color: white;
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(123, 47, 247, 0.4);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 139, 230, 0.3);
         }
 
         .btn-success {
-            background: rgba(63, 185, 80, 0.15);
+            background: rgba(64, 192, 87, 0.1);
             color: var(--accent-green);
             border: 1px solid var(--accent-green);
         }
 
         .btn-success:hover {
-            background: rgba(63, 185, 80, 0.25);
+            background: rgba(64, 192, 87, 0.2);
         }
 
         .btn-danger {
-            background: rgba(248, 81, 73, 0.15);
+            background: rgba(250, 82, 82, 0.1);
             color: var(--accent-red);
             border: 1px solid var(--accent-red);
         }
 
         .btn-danger:hover {
-            background: rgba(248, 81, 73, 0.25);
+            background: rgba(250, 82, 82, 0.2);
         }
 
         .btn-warning {
-            background: rgba(210, 153, 34, 0.15);
+            background: rgba(253, 126, 20, 0.1);
             color: var(--accent-orange);
             border: 1px solid var(--accent-orange);
         }
@@ -335,31 +354,29 @@
             flex-wrap: wrap;
         }
 
-        /* Result */
         .result {
             margin-top: 16px;
             padding: 16px;
             border-radius: 8px;
             font-size: 13px;
             display: none;
-            font-family: 'Monaco', 'Consolas', monospace;
+            font-family: 'IBM Plex Mono', monospace;
             overflow-x: auto;
         }
 
         .result.show { display: block; }
         .result.success {
-            background: rgba(63, 185, 80, 0.1);
+            background: rgba(64, 192, 87, 0.1);
             border: 1px solid var(--accent-green);
             color: var(--accent-green);
         }
 
         .result.error {
-            background: rgba(248, 81, 73, 0.1);
+            background: rgba(250, 82, 82, 0.1);
             border: 1px solid var(--accent-red);
             color: var(--accent-red);
         }
 
-        /* Tab Content */
         .tab-content {
             display: none;
         }
@@ -368,7 +385,6 @@
             display: block;
         }
 
-        /* Table */
         .table {
             width: 100%;
             border-collapse: collapse;
@@ -376,54 +392,113 @@
 
         .table th,
         .table td {
-            padding: 12px 16px;
+            padding: 14px 16px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
         }
 
         .table th {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            background: var(--bg-tertiary);
         }
 
         .table td {
             font-size: 14px;
             color: var(--text-secondary);
+            font-family: 'IBM Plex Mono', monospace;
         }
 
         .table tr:hover td {
             background: var(--bg-tertiary);
         }
 
-        /* Badge */
         .badge {
             display: inline-flex;
             align-items: center;
             padding: 4px 10px;
-            border-radius: 20px;
+            border-radius: 6px;
             font-size: 12px;
             font-weight: 500;
         }
 
         .badge-success {
-            background: rgba(63, 185, 80, 0.15);
+            background: rgba(64, 192, 87, 0.15);
             color: var(--accent-green);
         }
 
         .badge-danger {
-            background: rgba(248, 81, 73, 0.15);
+            background: rgba(250, 82, 82, 0.15);
             color: var(--accent-red);
         }
 
         .badge-warning {
-            background: rgba(210, 153, 34, 0.15);
+            background: rgba(253, 126, 20, 0.15);
             color: var(--accent-orange);
         }
 
-        /* Empty State */
+        .badge-blue {
+            background: rgba(34, 139, 230, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .badge-purple {
+            background: rgba(121, 80, 242, 0.15);
+            color: var(--accent-purple);
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            height: 120px;
+            padding: 16px 0;
+        }
+
+        .bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bar-wrapper {
+            width: 100%;
+            height: 80px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-end;
+            overflow: hidden;
+        }
+
+        .bar {
+            width: 100%;
+            border-radius: 8px;
+            transition: height 0.3s ease;
+        }
+
+        .bar.core { background: linear-gradient(180deg, #228be6, #1c7ed6); }
+        .bar.mid { background: linear-gradient(180deg, #7950f2, #6741d9); }
+        .bar.tail { background: linear-gradient(180deg, #fd7e14, #f76707); }
+
+        .bar-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .bar-value {
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--text-primary);
+        }
+
         .empty {
             text-align: center;
             padding: 40px;
@@ -436,11 +511,41 @@
             opacity: 0.5;
         }
 
-        /* Responsive */
+        .vault-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .vault-card {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .vault-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .vault-value {
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        .vault-value.primary { color: var(--accent-blue); }
+        .vault-value.secondary { color: var(--accent-teal); }
+
         @media (max-width: 768px) {
             .container { padding: 16px; }
             .stats-grid { grid-template-columns: 1fr; }
             .form-row { grid-template-columns: 1fr; }
+            .vault-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -448,18 +553,24 @@
     <div class="container">
         <header>
             <div class="logo">
-                <div class="logo-icon">🤖</div>
-                <span class="logo-text">Uniswap Bot</span>
+                <div class="logo-icon">📊</div>
+                <div>
+                    <div class="logo-text">Stablecoin MM</div>
+                    <div class="logo-subtitle">Decentralized Market Making Platform</div>
+                </div>
             </div>
             <div class="header-status">
-                <div class="status-dot" id="statusDot"></div>
-                <span class="status-text" id="statusText">Loading...</span>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span class="status-text" id="statusText">Loading...</span>
+                </div>
             </div>
         </header>
 
         <nav class="nav">
             <button class="nav-item active" onclick="showPage('dashboard')">Dashboard</button>
             <button class="nav-item" onclick="showPage('operations')">Operations</button>
+            <button class="nav-item" onclick="showPage('positions')">Positions</button>
             <button class="nav-item" onclick="showPage('settings')">Settings</button>
         </nav>
 
@@ -467,7 +578,7 @@
         <div id="dashboard" class="tab-content active">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-label">Running Status</div>
+                    <div class="stat-label">Status</div>
                     <div class="stat-value" id="runningStatus">-</div>
                 </div>
                 <div class="stat-card">
@@ -475,12 +586,13 @@
                     <div class="stat-value" id="circuitBreaker">-</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Fee Tier</div>
-                    <div class="stat-value blue" id="feeTier">-</div>
+                    <div class="stat-label">Current Price</div>
+                    <div class="stat-value blue" id="currentPriceStat">-</div>
+                    <div class="stat-sub" id="priceDeviation"></div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Total Ratio</div>
-                    <div class="stat-value purple" id="totalRatio">-</div>
+                    <div class="stat-label">TWAP Price</div>
+                    <div class="stat-value purple" id="twapPriceStat">-</div>
                 </div>
             </div>
 
@@ -488,62 +600,73 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
-                            <div class="card-title-icon">💰</div>
-                            Account Balance
+                            <div class="card-title-icon">💳</div>
+                            LP Vault Balance
                         </div>
                     </div>
-                    <table class="table">
-                        <tr>
-                            <td>Token0 (GLUSD)</td>
-                            <td id="token0Balance" style="text-align: right; font-family: monospace;">-</td>
-                        </tr>
-                        <tr>
-                            <td>Token1 (USDT)</td>
-                            <td id="token1Balance" style="text-align: right; font-family: monospace;">-</td>
-                        </tr>
-                    </table>
+                    <div class="vault-grid">
+                        <div class="vault-card">
+                            <div class="vault-label">GLUSD Balance</div>
+                            <div class="vault-value primary" id="token0Balance">-</div>
+                        </div>
+                        <div class="vault-card">
+                            <div class="vault-label">USDT Balance</div>
+                            <div class="vault-value secondary" id="token1Balance">-</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                        <div class="vault-label">Wallet Address</div>
+                        <div id="walletAddressLp" style="font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--text-secondary);">-</div>
+                    </div>
                 </div>
 
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
-                            <div class="card-title-icon">⚙️</div>
+                            <div class="card-title-icon">🏦</div>
+                            Stabilization Vault
+                        </div>
+                    </div>
+                    <div class="vault-grid">
+                        <div class="vault-card">
+                            <div class="vault-label">GLUSD Reserved</div>
+                            <div class="vault-value primary" id="stabilizeToken0">-</div>
+                        </div>
+                        <div class="vault-card">
+                            <div class="vault-label">USDT Reserved</div>
+                            <div class="vault-value secondary" id="stabilizeToken1">-</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                        <div class="vault-label">Wallet Address</div>
+                        <div id="walletAddress" style="font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--text-secondary);">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <div class="card-title-icon">🎛️</div>
                             Control Panel
                         </div>
                     </div>
                     <div class="btn-group">
-                        <button class="btn btn-success" onclick="startBot()">▶ Start</button>
-                        <button class="btn btn-danger" onclick="stopBot()">■ Stop</button>
+                        <button class="btn btn-success" onclick="startBot()">▶ Start Bot</button>
+                        <button class="btn btn-danger" onclick="stopBot()">■ Stop Bot</button>
                         <button class="btn btn-warning" onclick="triggerRebalance()">↻ Rebalance</button>
                     </div>
                 </div>
-            </div>
 
-            <div class="grid">
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
-                            <div class="card-title-icon">📊</div>
-                            Metrics
+                            <div class="card-title-icon">📈</div>
+                            Performance
                         </div>
                     </div>
                     <table class="table">
-                        <tr>
-                            <td>Current Price</td>
-                            <td id="currentPrice" style="text-align: right;">-</td>
-                        </tr>
-                        <tr>
-                            <td>TWAP Price</td>
-                            <td id="twapPrice" style="text-align: right;">-</td>
-                        </tr>
-                        <tr>
-                            <td>Reference Price</td>
-                            <td id="refPrice" style="text-align: right;">-</td>
-                        </tr>
-                        <tr>
-                            <td>Deviation</td>
-                            <td id="deviation" style="text-align: right;">-</td>
-                        </tr>
                         <tr>
                             <td>Fees Collected</td>
                             <td id="feesCollected" style="text-align: right;">-</td>
@@ -552,32 +675,38 @@
                             <td>Net Profit</td>
                             <td id="netProfit" style="text-align: right;">-</td>
                         </tr>
+                        <tr>
+                            <td>Gas Cost</td>
+                            <td id="gasCost" style="text-align: right;">-</td>
+                        </tr>
                     </table>
                 </div>
+            </div>
 
+            <div class="grid">
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
                             <div class="card-title-icon">🔗</div>
-                            Pool Configuration
+                            Pool Information
                         </div>
                     </div>
                     <table class="table">
                         <tr>
                             <td>Pool Address</td>
-                            <td id="poolAddress" style="text-align: right; font-family: monospace; font-size: 12px;">-</td>
+                            <td id="poolAddress" style="text-align: right; font-size: 11px;">-</td>
                         </tr>
                         <tr>
-                            <td>Token0 Address</td>
-                            <td id="token0Addr" style="text-align: right; font-family: monospace; font-size: 12px;">-</td>
+                            <td>Token0 (GLUSD)</td>
+                            <td id="token0Addr" style="text-align: right; font-size: 11px;">-</td>
                         </tr>
                         <tr>
-                            <td>Token1 Address</td>
-                            <td id="token1Addr" style="text-align: right; font-family: monospace; font-size: 12px;">-</td>
+                            <td>Token1 (USDT)</td>
+                            <td id="token1Addr" style="text-align: right; font-size: 11px;">-</td>
                         </tr>
                         <tr>
-                            <td>Chain ID</td>
-                            <td id="chainId" style="text-align: right;">1301</td>
+                            <td>Fee Tier</td>
+                            <td id="feeTier" style="text-align: right;">-</td>
                         </tr>
                     </table>
                 </div>
@@ -590,42 +719,39 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
-                            <div class="card-title-icon">🏊</div>
-                            Create Pool
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Token0 Address</label>
-                        <input type="text" class="form-input" id="createToken0" value="0x948e15b38f096d3a664fdeef44c13709732b2110">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Token1 Address</label>
-                        <input type="text" class="form-input" id="createToken1" value="0x2d7efff683b0a21e0989729e0249c42cdf9ee442">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Fee Tier (500 = 0.05%)</label>
-                        <input type="number" class="form-input" id="createFee" value="500">
-                    </div>
-                    <button class="btn btn-primary" onclick="createPool()">Create Pool</button>
-                    <div id="createPoolResult" class="result"></div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">
                             <div class="card-title-icon">💧</div>
                             Add Liquidity
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Token0 Amount (wei)</label>
-                            <input type="text" class="form-input" id="liquidityAmount0" value="1000000">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Token1 Amount (wei)</label>
-                            <input type="text" class="form-input" id="liquidityAmount1" value="1000000">
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label">GLUSD Amount</label>
+                        <input type="text" class="form-input" id="liquidityAmount0" value="1000" oninput="calculateTierAllocation()">
+                        <div class="form-label" style="margin-top: 4px; color: var(--text-muted); font-size: 11px;">Available: <span id="token0Available">-</span></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">USDT Amount</label>
+                        <input type="text" class="form-input" id="liquidityAmount1" value="1000" oninput="calculateTierAllocation()">
+                        <div class="form-label" style="margin-top: 4px; color: var(--text-muted); font-size: 11px;">Available: <span id="token1Available">-</span></div>
+                    </div>
+                    <div class="card" style="background: var(--bg-tertiary); margin-bottom: 16px; padding: 16px;">
+                        <div class="form-label" style="margin-bottom: 12px;">Allocation Preview</div>
+                        <table class="table" style="font-size: 13px;">
+                            <tr>
+                                <td style="color: var(--accent-blue); font-weight: 600;">Core (60%)</td>
+                                <td id="coreAllocation" style="text-align: right; font-family: monospace;">-</td>
+                                <td style="text-align: right; font-size: 11px; color: var(--text-muted);">0.9995 - 1.0005</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-purple); font-weight: 600;">Mid (30%)</td>
+                                <td id="midAllocation" style="text-align: right; font-family: monospace;">-</td>
+                                <td style="text-align: right; font-size: 11px; color: var(--text-muted);">0.995 - 1.005</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--accent-orange); font-weight: 600;">Tail (10%)</td>
+                                <td id="tailAllocation" style="text-align: right; font-family: monospace;">-</td>
+                                <td style="text-align: right; font-size: 11px; color: var(--text-muted);">0.98 - 1.02</td>
+                            </tr>
+                        </table>
                     </div>
                     <button class="btn btn-primary" onclick="addLiquidity()">Add Liquidity</button>
                     <div id="addLiquidityResult" class="result"></div>
@@ -638,29 +764,53 @@
                             Swap
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
                             <label class="form-label">Token In</label>
-                            <input type="text" class="form-input" id="swapTokenIn" value="0x948e15b38f096d3a664fdeef44c13709732b2110">
+                            <div id="swapTokenInLabel" style="padding: 12px; background: var(--bg-tertiary); border-radius: 8px; font-weight: 600; color: var(--accent-blue);">USDT</div>
                         </div>
-                        <div class="form-group">
+                        <button class="btn btn-primary" style="padding: 12px; margin-top: 24px;" onclick="swapDirection()">⇄</button>
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
                             <label class="form-label">Token Out</label>
-                            <input type="text" class="form-input" id="swapTokenOut" value="0x2d7efff683b0a21e0989729e0249c42cdf9ee442">
+                            <div id="swapTokenOutLabel" style="padding: 12px; background: var(--bg-tertiary); border-radius: 8px; font-weight: 600; color: var(--accent-purple);">GLUSD</div>
                         </div>
                     </div>
+                    <input type="hidden" id="swapTokenIn" value="0x2d7efff683b0a21e0989729e0249c42cdf9ee442">
+                    <input type="hidden" id="swapTokenOut" value="0x948e15b38f096d3a664fdeef44c13709732b2110">
                     <div class="form-group">
                         <label class="form-label">Amount In (wei)</label>
-                        <input type="text" class="form-input" id="swapAmountIn" value="100000">
+                        <input type="text" class="form-input" id="swapAmountIn" value="1000000">
                     </div>
                     <button class="btn btn-primary" onclick="executeSwap()">Execute Swap</button>
                     <div id="swapResult" class="result"></div>
                 </div>
+            </div>
+        </div>
 
+        <!-- Positions -->
+        <div id="positions" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-title-icon">📊</div>
+                        Liquidity Distribution
+                    </div>
+                    <button class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="loadPositions()">↻ Refresh</button>
+                </div>
+                <div id="positionsChart" class="bar-chart">
+                    <div class="empty">
+                        <div class="empty-icon">📭</div>
+                        <div>No positions found</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid" style="margin-top: 20px;">
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
                             <div class="card-title-icon">📋</div>
-                            Positions
+                            Position Details
                         </div>
                     </div>
                     <div id="positionsList">
@@ -680,29 +830,41 @@
                     <div class="card-header">
                         <div class="card-title">
                             <div class="card-title-icon">⚙️</div>
-                            Configuration
+                            Bot Configuration
                         </div>
                     </div>
                     <table class="table">
                         <tr>
-                            <td>Server Port</td>
-                            <td style="text-align: right;">8080</td>
+                            <td>Core Ratio</td>
+                            <td style="text-align: right;">60%</td>
                         </tr>
                         <tr>
-                            <td>RPC URL</td>
-                            <td style="text-align: right; font-family: monospace; font-size: 11px;">unichain-sepolia-rpc.publicnode.com</td>
+                            <td>Mid Ratio</td>
+                            <td style="text-align: right;">30%</td>
                         </tr>
                         <tr>
-                            <td>Factory Address</td>
-                            <td style="text-align: right; font-family: monospace; font-size: 11px;">0x1F98431c8aD98523631AE4a59f267346ea31F984</td>
+                            <td>Tail Ratio</td>
+                            <td style="text-align: right;">10%</td>
                         </tr>
                         <tr>
-                            <td>Position Manager</td>
-                            <td style="text-align: right; font-family: monospace; font-size: 11px;">0xC36442b4a4522E871399CD717aBDD847Ab11FE88</td>
+                            <td>Core Range</td>
+                            <td style="text-align: right;">±5 bps</td>
                         </tr>
                         <tr>
-                            <td>Swap Router</td>
-                            <td style="text-align: right; font-family: monospace; font-size: 11px;">0xE592427A0AEce92De3Edee1F18E0157C05861564</td>
+                            <td>Mid Range</td>
+                            <td style="text-align: right;">±50 bps</td>
+                        </tr>
+                        <tr>
+                            <td>Tail Range</td>
+                            <td style="text-align: right;">±200 bps</td>
+                        </tr>
+                        <tr>
+                            <td>Rebalance Threshold</td>
+                            <td style="text-align: right;">0.2%</td>
+                        </tr>
+                        <tr>
+                            <td>Rebalance Interval</td>
+                            <td style="text-align: right;">60 seconds</td>
                         </tr>
                     </table>
                 </div>
@@ -720,6 +882,10 @@
                             <td style="text-align: right;">30 bps</td>
                         </tr>
                         <tr>
+                            <td>Circuit Breaker Duration</td>
+                            <td style="text-align: right;">15 minutes</td>
+                        </tr>
+                        <tr>
                             <td>Max Daily Loss</td>
                             <td style="text-align: right;">50 bps</td>
                         </tr>
@@ -733,12 +899,86 @@
                         </tr>
                     </table>
                 </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <div class="card-title-icon">⚡</div>
+                            Stabilization Settings
+                        </div>
+                    </div>
+                    <table class="table">
+                        <tr>
+                            <td>Enabled</td>
+                            <td style="text-align: right;"><span class="badge badge-success">Yes</span></td>
+                        </tr>
+                        <tr>
+                            <td>Deviation Threshold</td>
+                            <td style="text-align: right;">30 bps</td>
+                        </tr>
+                        <tr>
+                            <td>Swap Amount</td>
+                            <td style="text-align: right;">10% of balance</td>
+                        </tr>
+                        <tr>
+                            <td>Min Swap Amount</td>
+                            <td style="text-align: right;">100</td>
+                        </tr>
+                        <tr>
+                            <td>Max Swap Amount</td>
+                            <td style="text-align: right;">10,000</td>
+                        </tr>
+                        <tr>
+                            <td>Cooldown</td>
+                            <td style="text-align: right;">60 seconds</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <div class="card-title-icon">⛽</div>
+                            Execution Settings
+                        </div>
+                    </div>
+                    <table class="table">
+                        <tr>
+                            <td>Gas Limit</td>
+                            <td style="text-align: right;">500,000</td>
+                        </tr>
+                        <tr>
+                            <td>Gas Price Multiplier</td>
+                            <td style="text-align: right;">1.1x</td>
+                        </tr>
+                        <tr>
+                            <td>Max Slippage</td>
+                            <td style="text-align: right;">30 bps</td>
+                        </tr>
+                        <tr>
+                            <td>Deadline</td>
+                            <td style="text-align: right;">300 seconds</td>
+                        </tr>
+                        <tr>
+                            <td>Retry Times</td>
+                            <td style="text-align: right;">3</td>
+                        </tr>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         const API_BASE = 'http://localhost:8080/api/v1';
+        const TOKEN_DECIMALS = 18;
+
+        function formatAmount(value, decimals = TOKEN_DECIMALS) {
+            if (!value || value === '0') return '0.00';
+            const num = parseFloat(value);
+            if (isNaN(num)) return '0.00';
+            return (num / Math.pow(10, decimals)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
 
         async function apiCall(endpoint, method = 'GET', body = null) {
             try {
@@ -757,6 +997,7 @@
             document.getElementById(page).classList.add('active');
             document.querySelector(`[onclick="showPage('${page}')"]`).classList.add('active');
             if (page === 'dashboard') loadDashboard();
+            if (page === 'positions') loadPositions();
         }
 
         async function loadDashboard() {
@@ -764,7 +1005,6 @@
             const balance = await apiCall('/balance');
             const metrics = await apiCall('/metrics');
 
-            // Status
             const isRunning = status.running;
             document.getElementById('statusDot').className = 'status-dot ' + (isRunning ? 'running' : 'stopped');
             document.getElementById('statusText').className = 'status-text ' + (isRunning ? 'running' : 'stopped');
@@ -778,42 +1018,56 @@
                 ? '<span class="badge badge-danger">Triggered</span>' 
                 : '<span class="badge badge-success">Normal</span>';
 
-            document.getElementById('feeTier').textContent = (status.fee_tier || 0) / 100 + '%';
-            document.getElementById('totalRatio').textContent = ((status.total_ratio || 0) * 100).toFixed(1) + '%';
+            const currentPrice = parseFloat(metrics.current_price || '0');
+            const twapPrice = parseFloat(metrics.twap_price || '0');
+            document.getElementById('currentPriceStat').textContent = currentPrice.toFixed(6);
+            document.getElementById('twapPriceStat').textContent = twapPrice.toFixed(6);
+            
+            const deviation = parseFloat(metrics.deviation || '0') * 100;
+            document.getElementById('priceDeviation').textContent = `Deviation: ${deviation.toFixed(4)}%`;
+            document.getElementById('priceDeviation').style.color = deviation > 0.2 ? 'var(--accent-red)' : 'var(--text-muted)';
 
-            // Balance
-            document.getElementById('token0Balance').textContent = balance.token0_balance || '0';
-            document.getElementById('token1Balance').textContent = balance.token1_balance || '0';
+            const token0Bal = formatAmount(balance.token0_balance);
+            const token1Bal = formatAmount(balance.token1_balance);
+            document.getElementById('token0Balance').textContent = token0Bal;
+            document.getElementById('token1Balance').textContent = token1Bal;
+            document.getElementById('token0Available').textContent = token0Bal;
+            document.getElementById('token1Available').textContent = token1Bal;
 
-            // Metrics
-            document.getElementById('currentPrice').textContent = metrics.current_price || '0';
-            document.getElementById('twapPrice').textContent = metrics.twap_price || '0';
-            document.getElementById('refPrice').textContent = metrics.ref_price || '0';
-            document.getElementById('deviation').textContent = ((metrics.deviation || 0) * 100).toFixed(4) + '%';
-            document.getElementById('feesCollected').textContent = metrics.fees_collected || '0';
-            document.getElementById('netProfit').textContent = metrics.net_profit || '0';
+            document.getElementById('stabilizeToken0').textContent = token0Bal;
+            document.getElementById('stabilizeToken1').textContent = token1Bal;
 
-            // Pool Config
-            document.getElementById('poolAddress').textContent = status.pool_address || 'Not set';
-            document.getElementById('token0Addr').textContent = status.token0 ? status.token0.substring(0, 18) + '...' : '-';
-            document.getElementById('token1Addr').textContent = status.token1 ? status.token1.substring(0, 18) + '...' : '-';
+            const walletAddr = balance.wallet_address || '-';
+            document.getElementById('walletAddress').textContent = walletAddr;
+            document.getElementById('walletAddressLp').textContent = walletAddr;
+
+            document.getElementById('feesCollected').textContent = formatAmount(metrics.fees_collected);
+            document.getElementById('netProfit').textContent = formatAmount(metrics.net_profit);
+            document.getElementById('gasCost').textContent = formatAmount(metrics.gas_cost);
+
+            document.getElementById('poolAddress').textContent = status.pool_address || '-';
+            document.getElementById('token0Addr').textContent = status.token0 || '-';
+            document.getElementById('token1Addr').textContent = status.token1 || '-';
+            document.getElementById('feeTier').textContent = (status.fee_tier || 0) / 10000 * 100 + '%';
+
+            loadPositions();
         }
 
         async function startBot() {
             const result = await apiCall('/start', 'POST');
-            showResult('createPoolResult', result.success, result.message || JSON.stringify(result));
+            showResult('addLiquidityResult', result.success, result.message || 'Bot started');
             loadDashboard();
         }
 
         async function stopBot() {
             const result = await apiCall('/stop', 'POST');
-            showResult('createPoolResult', result.success, result.message || JSON.stringify(result));
+            showResult('addLiquidityResult', result.success, result.message || 'Bot stopped');
             loadDashboard();
         }
 
         async function triggerRebalance() {
             const result = await apiCall('/rebalance', 'POST');
-            showResult('createPoolResult', result.success, result.message || JSON.stringify(result));
+            showResult('addLiquidityResult', result.success, result.message || 'Rebalance triggered');
         }
 
         function showResult(elementId, success, message) {
@@ -822,27 +1076,36 @@
             el.textContent = typeof message === 'string' ? message : JSON.stringify(message, null, 2);
         }
 
-        async function createPool() {
-            const body = {
-                token0: document.getElementById('createToken0').value,
-                token1: document.getElementById('createToken1').value,
-                fee: parseInt(document.getElementById('createFee').value)
-            };
-            const result = await apiCall('/create-pool', 'POST', body);
-            showResult('createPoolResult', result.success, result);
-        }
-
         async function addLiquidity() {
             const status = await apiCall('/status');
+            const amount0 = parseFloat(document.getElementById('liquidityAmount0').value) || 0;
+            const amount1 = parseFloat(document.getElementById('liquidityAmount1').value) || 0;
+            
             const body = {
                 token0: status.token0,
                 token1: status.token1,
-                amount0: document.getElementById('liquidityAmount0').value,
-                amount1: document.getElementById('liquidityAmount1').value,
+                amount0: Math.floor(amount0 * Math.pow(10, TOKEN_DECIMALS)).toString(),
+                amount1: Math.floor(amount1 * Math.pow(10, TOKEN_DECIMALS)).toString(),
                 fee: status.fee_tier || 500
             };
             const result = await apiCall('/add-liquidity', 'POST', body);
             showResult('addLiquidityResult', result.success, result);
+            loadDashboard();
+        }
+
+        function swapDirection() {
+            const tokenIn = document.getElementById('swapTokenIn');
+            const tokenOut = document.getElementById('swapTokenOut');
+            const tokenInLabel = document.getElementById('swapTokenInLabel');
+            const tokenOutLabel = document.getElementById('swapTokenOutLabel');
+            
+            const temp = tokenIn.value;
+            tokenIn.value = tokenOut.value;
+            tokenOut.value = temp;
+            
+            const tempLabel = tokenInLabel.textContent;
+            tokenInLabel.textContent = tokenOutLabel.textContent;
+            tokenOutLabel.textContent = tempLabel;
         }
 
         async function executeSwap() {
@@ -855,8 +1118,84 @@
             showResult('swapResult', result.success, result);
         }
 
-        // Initial load
+        function calculateTierAllocation() {
+            const amount0 = parseFloat(document.getElementById('liquidityAmount0').value) || 0;
+            const amount1 = parseFloat(document.getElementById('liquidityAmount1').value) || 0;
+            
+            const core0 = (amount0 * 0.6).toFixed(2);
+            const core1 = (amount1 * 0.6).toFixed(2);
+            const mid0 = (amount0 * 0.3).toFixed(2);
+            const mid1 = (amount1 * 0.3).toFixed(2);
+            const tail0 = (amount0 * 0.1).toFixed(2);
+            const tail1 = (amount1 * 0.1).toFixed(2);
+            
+            document.getElementById('coreAllocation').textContent = `${core0} / ${core1}`;
+            document.getElementById('midAllocation').textContent = `${mid0} / ${mid1}`;
+            document.getElementById('tailAllocation').textContent = `${tail0} / ${tail1}`;
+        }
+
+        async function loadPositions() {
+            const positions = await apiCall('/positions');
+            const chartContainer = document.getElementById('positionsChart');
+            const listContainer = document.getElementById('positionsList');
+            
+            if (!positions.layers || positions.layers.length === 0 || 
+                (parseFloat(positions.layers[0].amount0 || '0') === 0 && 
+                 parseFloat(positions.layers[0].amount1 || '0') === 0)) {
+                chartContainer.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>No positions found</div></div>';
+                listContainer.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>No positions found</div></div>';
+                return;
+            }
+            
+            const maxAmount = Math.max(
+                parseFloat(positions.layers[0].amount0 || '0'),
+                parseFloat(positions.layers[0].amount1 || '0'),
+                parseFloat(positions.layers[1].amount0 || '0'),
+                parseFloat(positions.layers[1].amount1 || '0'),
+                parseFloat(positions.layers[2].amount0 || '0'),
+                parseFloat(positions.layers[2].amount1 || '0'),
+                1
+            );
+
+            let chartHtml = '';
+            let listHtml = '<table class="table"><thead><tr><th>Layer</th><th>GLUSD</th><th>USDT</th><th>Total</th></tr></thead><tbody>';
+            
+            positions.layers.forEach(layer => {
+                const amount0 = parseFloat(layer.amount0 || '0') / Math.pow(10, TOKEN_DECIMALS);
+                const amount1 = parseFloat(layer.amount1 || '0') / Math.pow(10, TOKEN_DECIMALS);
+                const total = amount0 + amount1;
+                const height = Math.max((total / maxAmount) * 100, 5);
+                
+                const layerClass = layer.name === 'core' ? 'core' : layer.name === 'mid' ? 'mid' : 'tail';
+                const badgeClass = layer.name === 'core' ? 'badge-blue' : layer.name === 'mid' ? 'badge-purple' : 'badge-warning';
+                
+                chartHtml += `
+                    <div class="bar-container">
+                        <div class="bar-value">$${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        <div class="bar-wrapper">
+                            <div class="bar ${layerClass}" style="height: ${height}%"></div>
+                        </div>
+                        <div class="bar-label">${layer.name.toUpperCase()}</div>
+                    </div>
+                `;
+                
+                listHtml += `
+                    <tr>
+                        <td><span class="badge ${badgeClass}">${layer.name}</span></td>
+                        <td style="text-align: right;">${amount0.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td style="text-align: right;">${amount1.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td style="text-align: right; font-weight: 600;">$${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    </tr>
+                `;
+            });
+            
+            listHtml += '</tbody></table>';
+            chartContainer.innerHTML = chartHtml;
+            listContainer.innerHTML = listHtml;
+        }
+
         loadDashboard();
+        calculateTierAllocation();
         setInterval(loadDashboard, 5000);
     </script>
 </body>
