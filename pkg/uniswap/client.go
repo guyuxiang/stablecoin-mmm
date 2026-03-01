@@ -6,27 +6,13 @@ import (
 	"math"
 	"math/big"
 
+	coreEntities "github.com/daoleno/uniswap-sdk-core/entities"
+	"github.com/daoleno/uniswapv3-sdk/constants"
+	"github.com/daoleno/uniswapv3-sdk/entities"
+	"github.com/daoleno/uniswapv3-sdk/examples/contract"
+	"github.com/daoleno/uniswapv3-sdk/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-)
-
-const (
-	ChainID = 1301
-)
-
-var (
-	USDT = Token{
-		Address:  common.HexToAddress("0x2d7efff683b0a21e0989729e0249c42cdf9ee442"),
-		Decimals: 18,
-		Symbol:   "USDT",
-		Name:     "USDT",
-	}
-	GLUSD = Token{
-		Address:  common.HexToAddress("0x948e15b38f096d3a664fdeef44c13709732b2110"),
-		Decimals: 18,
-		Symbol:   "GLUSD",
-		Name:     "GLUSD",
-	}
 )
 
 type Token struct {
@@ -56,6 +42,13 @@ type Client struct {
 	poolAddr  common.Address
 	feeTier   uint32
 	chainID   int64
+
+	token0     *coreEntities.Token
+	token1     *coreEntities.Token
+	sdkPool    *entities.Pool
+	factory    *contract.Uniswapv3Factory
+	positionMgr *contract.Uniswapv3NFTPositionManager
+	swapRouter *contract.Uniswapv3SwapRouter
 }
 
 func NewClient(rpcURL, poolAddress string, feeTier uint32) (*Client, error) {
@@ -64,27 +57,116 @@ func NewClient(rpcURL, poolAddress string, feeTier uint32) (*Client, error) {
 		return nil, fmt.Errorf("failed to connect to ethclient: %w", err)
 	}
 
+	poolAddr := common.HexToAddress(poolAddress)
+	factoryAddr := common.HexToAddress("0x1F98431c8aD98523631AE4a59f267346ea31F984")
+	positionMgrAddr := common.HexToAddress("0xC36442b4a4522E871399CD717aBDD847Ab11FE88")
+	swapRouterAddr := common.HexToAddress("0xE592427A0AEce92De3Edee1F18E0157C05861564")
+
+	GLUSD := common.HexToAddress("0x948e15b38f096d3a664fdeef44c13709732b2110")
+	USDT := common.HexToAddress("0x2d7efff683b0a21e0989729e0249c42cdf9ee442")
+
+	token0 := coreEntities.NewToken(1301, GLUSD, 18, "GLUSD", "GLUSD")
+	token1 := coreEntities.NewToken(1301, USDT, 18, "USDT", "USDT")
+
+	factory, err := contract.NewUniswapv3Factory(factoryAddr, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create factory: %w", err)
+	}
+
+	positionMgr, err := contract.NewUniswapv3NFTPositionManager(positionMgrAddr, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create position manager: %w", err)
+	}
+
+	swapRouter, err := contract.NewUniswapv3SwapRouter(swapRouterAddr, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create swap router: %w", err)
+	}
+
 	return &Client{
-		ethClient: client,
-		poolAddr:  common.HexToAddress(poolAddress),
-		feeTier:   feeTier,
-		chainID:   ChainID,
+		ethClient:   client,
+		poolAddr:    poolAddr,
+		feeTier:     feeTier,
+		chainID:     1301,
+		token0:      token0,
+		token1:      token1,
+		factory:     factory,
+		positionMgr: positionMgr,
+		swapRouter:  swapRouter,
 	}, nil
 }
 
 func (c *Client) GetPool(ctx context.Context) (*Pool, error) {
+	pool, err := c.fetchPoolData(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Pool{
 		Address:   c.poolAddr,
-		Token0:    &GLUSD,
-		Token1:    &USDT,
+		Token0:    &Token{Address: c.token0.Address, Decimals: c.token0.Decimals, Symbol: c.token0.Symbol, Name: c.token0.Name},
+		Token1:    &Token{Address: c.token1.Address, Decimals: c.token1.Decimals, Symbol: c.token1.Symbol, Name: c.token1.Name},
 		Fee:       c.feeTier,
-		Liquidity: big.NewInt(0),
+		Liquidity: pool.Liquidity,
 		Slot0: Slot0{
-			Price:            big.NewInt(0),
-			Tick:             0,
+			Price:            pool.SqrtPriceX96,
+			Tick:             int32(pool.Tick),
 			ObservationIndex: 0,
 		},
 	}, nil
+}
+
+func (c *Client) fetchPoolData(ctx context.Context) (*entities.Pool, error) {
+	contractPool, err := contract.NewUniswapv3Pool(c.poolAddr, c.ethClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pool contract: %w", err)
+	}
+
+	liquidity, err := contractPool.Liquidity(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get liquidity: %w", err)
+	}
+
+	slot0, err := contractPool.Slot0(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get slot0: %w", err)
+	}
+
+	feeAmount := constants.FeeAmount(c.feeTier)
+	tickSpacing := constants.TickSpacings[feeAmount]
+
+	minTick := entities.NearestUsableTick(utils.MinTick, tickSpacing)
+	maxTick := entities.NearestUsableTick(utils.MaxTick, tickSpacing)
+
+	pooltick, err := contractPool.Ticks(ctx, big.NewInt(int64(minTick)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tick: %w", err)
+	}
+
+	ticks := []entities.Tick{
+		{
+			Index:          minTick,
+			LiquidityNet:   pooltick.LiquidityNet,
+			LiquidityGross: pooltick.LiquidityGross,
+		},
+		{
+			Index:          maxTick,
+			LiquidityNet:   new(big.Int).Neg(pooltick.LiquidityNet),
+			LiquidityGross: pooltick.LiquidityGross,
+		},
+	}
+
+	tickDataProvider, err := entities.NewTickListDataProvider(ticks, tickSpacing)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tick data provider: %w", err)
+	}
+
+	pool, err := entities.NewPool(c.token0, c.token1, feeAmount, slot0.SqrtPriceX96, liquidity, int(slot0.Tick.Int64()), tickDataProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pool: %w", err)
+	}
+
+	return pool, nil
 }
 
 func (c *Client) GetCurrentPrice(ctx context.Context) (*big.Float, error) {
@@ -112,9 +194,35 @@ func (c *Client) GetChainID() int64 {
 	return c.chainID
 }
 
+func (c *Client) GetPositionManager() *contract.Uniswapv3NFTPositionManager {
+	return c.positionMgr
+}
+
+func (c *Client) GetSwapRouter() *contract.Uniswapv3SwapRouter {
+	return c.swapRouter
+}
+
+func (c *Client) GetFactory() *contract.Uniswapv3Factory {
+	return c.factory
+}
+
+func (c *Client) GetSDKPool(ctx context.Context) (*entities.Pool, error) {
+	if c.sdkPool != nil {
+		return c.sdkPool, nil
+	}
+	return c.fetchPoolData(ctx)
+}
+
+func (c *Client) GetToken0() *coreEntities.Token {
+	return c.token0
+}
+
+func (c *Client) GetToken1() *coreEntities.Token {
+	return c.token1
+}
+
 func (c *Client) Close() error {
-	c.ethClient.Close()
-	return nil
+	return c.ethClient.Close()
 }
 
 func PriceToTick(price float64) int32 {
