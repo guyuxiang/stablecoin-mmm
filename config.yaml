@@ -6,7 +6,7 @@ server:
 uniswap:
   rpc_url: "https://astrochain-sepolia.gateway.tenderly.co/5neqYQoinBsj3Cc3O36Dun"
   chain_id: 1301
-  pool_address: "0x4e250d2b6f4534a0e5d3f08c3b16e80c4e63aef4"
+  pool_address: "0x12A264f6A787150c6772987e911A1942f1D9411D"
   factory_address: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
   position_manager: "0xB7F724d6dDDFd008eFf5cc2834edDE5F9eF0d075"
   swap_router: "0xd1AAE39293221B77B0C71fBD6dCb7Ea29Bb5B166"
