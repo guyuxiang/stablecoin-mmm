@@ -208,11 +208,26 @@ func (s *Server) handleCreatePool(c *gin.Context) {
 	}
 
 	if !result.Success {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success":  false,
-			"tx_hash":  result.TxHash,
-			"gas_used": result.GasUsed,
-			"error":    result.Error.Error(),
+		if result.GasUsed < 100000 {
+			c.JSON(http.StatusOK, gin.H{
+				"success":     false,
+				"tx_hash":     result.TxHash,
+				"gas_used":    result.GasUsed,
+				"error":       "pool already exists (factory reverted)",
+				"error_code":  "POOL_ALREADY_EXISTS",
+				"verified":    false,
+				"verification": "transaction reverted on chain - pool may already exist",
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"success":     false,
+			"tx_hash":     result.TxHash,
+			"gas_used":    result.GasUsed,
+			"error":       result.Error.Error(),
+			"error_code":  result.ErrorCode,
+			"verified":    false,
+			"verification": "transaction failed on chain",
 		})
 		return
 	}
@@ -222,6 +237,8 @@ func (s *Server) handleCreatePool(c *gin.Context) {
 		"tx_hash":      result.TxHash,
 		"pool_address": result.PoolAddress,
 		"gas_used":     result.GasUsed,
+		"verified":     true,
+		"verification": "transaction successful",
 	})
 }
 
@@ -282,24 +299,40 @@ func (s *Server) handleAddLiquidity(c *gin.Context) {
 	}
 
 	if !result.Success {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success":  false,
-			"tx_hash":  result.TxHash,
-			"gas_used": result.GasUsed,
-			"error":    result.Error.Error(),
+		c.JSON(http.StatusOK, gin.H{
+			"success":     false,
+			"tx_hash":     result.TxHash,
+			"gas_used":    result.GasUsed,
+			"error":       result.Error.Error(),
+			"error_code":  result.ErrorCode,
+			"verified":    false,
+			"verification": "transaction failed on chain",
 		})
 		return
 	}
 
+	verified := true
+	verificationMsg := "transaction successful"
+	if result.BalanceChange0 != nil && result.BalanceChange0.Cmp(big.NewInt(0)) < 0 {
+		verified = false
+		verificationMsg = "token0 balance not changed as expected"
+	}
+	if result.BalanceChange1 != nil && result.BalanceChange1.Cmp(big.NewInt(0)) < 0 {
+		verified = false
+		verificationMsg = "token1 balance not changed as expected"
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"tx_hash":    result.TxHash,
-		"token_id":   result.TokenID.String(),
-		"amount0":    result.Amount0.String(),
-		"amount1":    result.Amount1.String(),
-		"gas_used":   result.GasUsed,
-		"tick_lower": tickLower,
-		"tick_upper": tickUpper,
+		"success":          true,
+		"tx_hash":          result.TxHash,
+		"token_id":         result.TokenID.String(),
+		"amount0":          result.Amount0.String(),
+		"amount1":          result.Amount1.String(),
+		"gas_used":         result.GasUsed,
+		"tick_lower":       tickLower,
+		"tick_upper":       tickUpper,
+		"verified":         verified,
+		"verification_msg": verificationMsg,
 	})
 }
 
@@ -354,21 +387,35 @@ func (s *Server) handleSwap(c *gin.Context) {
 	}
 
 	if !result.Success {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success":  false,
-			"tx_hash":  result.TxHash,
-			"gas_used": result.GasUsed,
-			"error":    result.Error.Error(),
+		c.JSON(http.StatusOK, gin.H{
+			"success":     false,
+			"tx_hash":     result.TxHash,
+			"gas_used":    result.GasUsed,
+			"error":       result.Error.Error(),
+			"error_code":  result.ErrorCode,
+			"verified":    false,
+			"verification": "transaction failed on chain",
 		})
 		return
 	}
 
+	verified := true
+	verificationMsg := "transaction successful"
+	if result.BalanceChange0 != nil && result.BalanceChange0.Cmp(amountIn) != 0 {
+		verified = false
+		verificationMsg = "token balance change not as expected"
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"tx_hash":   result.TxHash,
-		"amount_in":  amountIn.String(),
-		"amount_out": result.Amount0.String(),
-		"gas_used":  result.GasUsed,
+		"success":          true,
+		"tx_hash":          result.TxHash,
+		"amount_in":        amountIn.String(),
+		"amount_out":       result.Amount0.String(),
+		"gas_used":         result.GasUsed,
+		"verified":         verified,
+		"verification_msg": verificationMsg,
+		"balance_change_in":  result.BalanceChange0.String(),
+		"balance_change_out": result.BalanceChange1.String(),
 	})
 }
 
@@ -381,15 +428,16 @@ func (s *Server) handleBalance(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	walletAddr := s.executor.GetWalletAddress()
 	token0Addr := common.HexToAddress(s.cfg.Uniswap.Token0Address)
 	token1Addr := common.HexToAddress(s.cfg.Uniswap.Token1Address)
 
-	token0Balance, err := s.executor.GetTokenBalance(ctx, token0Addr, common.HexToAddress(s.cfg.Uniswap.PositionManager))
+	token0Balance, err := s.executor.GetTokenBalance(ctx, token0Addr, walletAddr)
 	if err != nil {
 		token0Balance = big.NewInt(0)
 	}
 
-	token1Balance, err := s.executor.GetTokenBalance(ctx, token1Addr, common.HexToAddress(s.cfg.Uniswap.PositionManager))
+	token1Balance, err := s.executor.GetTokenBalance(ctx, token1Addr, walletAddr)
 	if err != nil {
 		token1Balance = big.NewInt(0)
 	}
@@ -399,6 +447,7 @@ func (s *Server) handleBalance(c *gin.Context) {
 		"token1_balance": token1Balance.String(),
 		"token0_address": token0Addr.Hex(),
 		"token1_address": token1Addr.Hex(),
+		"wallet_address": walletAddr.Hex(),
 	})
 }
 

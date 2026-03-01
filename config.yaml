@@ -4,9 +4,9 @@ server:
   mode: "release"
 
 uniswap:
-  rpc_url: "https://unichain-sepolia-rpc.publicnode.com"
+  rpc_url: "https://astrochain-sepolia.gateway.tenderly.co/5neqYQoinBsj3Cc3O36Dun"
   chain_id: 1301
-  pool_address: ""
+  pool_address: "0x4e250d2b6f4534a0e5d3f08c3b16e80c4e63aef4"
   factory_address: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
   position_manager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
   swap_router: "0xE592427A0AEce92De3Edee1F18E0157C05861564"
