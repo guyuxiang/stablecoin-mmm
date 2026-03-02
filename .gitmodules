@@ -1,3 +1,9 @@
 [submodule "foundry-deploy/lib/forge-std"]
 	path = foundry-deploy/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "foundry-deploy/lib/openzeppelin-contracts"]
+	path = foundry-deploy/lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "foundry-deploy/lib/v3-core"]
+	path = foundry-deploy/lib/v3-core
+	url = https://github.com/Uniswap/v3-core
