@@ -1,0 +1,13 @@
+{
+  "name": "stabilization-vault",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
+    "hardhat": "^3.0.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0",
+    "@uniswap/v3-core": "^1.0.0"
+  }
+}

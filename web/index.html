@@ -787,8 +787,8 @@
                     <input type="hidden" id="swapTokenIn" value="0x2d7efff683b0a21e0989729e0249c42cdf9ee442">
                     <input type="hidden" id="swapTokenOut" value="0x948e15b38f096d3a664fdeef44c13709732b2110">
                     <div class="form-group">
-                        <label class="form-label">Amount In (wei)</label>
-                        <input type="text" class="form-input" id="swapAmountIn" value="1000000">
+                        <label class="form-label">Amount In</label>
+                        <input type="text" class="form-input" id="swapAmountIn" value="1">
                     </div>
                     <button class="btn btn-primary" onclick="executeSwap()">Execute Swap</button>
                     <div id="swapResult" class="result"></div>
@@ -1099,8 +1099,8 @@
                 const body = {
                     token0: status.token0,
                     token1: status.token1,
-                    amount0: String(BigInt(amount0) * 1n ** BigInt(TOKEN_DECIMALS)),
-                    amount1: String(BigInt(amount1) * 1n ** BigInt(TOKEN_DECIMALS)),
+                    amount0: String(Math.floor(amount0 * Math.pow(10, TOKEN_DECIMALS))),
+                    amount1: String(Math.floor(amount1 * Math.pow(10, TOKEN_DECIMALS))),
                     fee: status.fee_tier || 500
                 };
                 const result = await apiCall('/add-liquidity', 'POST', body);
@@ -1147,7 +1147,7 @@
                 const body = {
                     token_in: document.getElementById('swapTokenIn').value,
                     token_out: document.getElementById('swapTokenOut').value,
-                    amount_in: document.getElementById('swapAmountIn').value
+                    amount_in: String(Math.floor(parseFloat(document.getElementById('swapAmountIn').value) * Math.pow(10, TOKEN_DECIMALS)))
                 };
                 const result = await apiCall('/swap', 'POST', body);
                 

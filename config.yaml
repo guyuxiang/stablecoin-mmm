@@ -21,7 +21,7 @@ bot:
   tail_ratio: 0.1
   core_range_bps: 5
   mid_range_bps: 50
-  tail_range_bps: 200
+  tail_range_bps: 20
   rebalance_threshold: 0.002
   rebalance_interval_seconds: 60
 

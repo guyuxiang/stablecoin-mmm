@@ -20,6 +20,7 @@ type Rebalancer struct {
 	positionService *position.PositionService
 	riskEngine      *risk.RiskEngine
 	executor        *executor.Executor
+	uniswapClient  *uniswap.Client
 	currentPrice    *big.Float
 	twapPrice       *big.Float
 	refPrice        *big.Float
