@@ -1,21 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-core/contracts/libraries/TickBitmap.sol";
 import "@uniswap/v3-core/contracts/libraries/SwapMath.sol";
 import "@uniswap/v3-core/contracts/libraries/LiquidityMath.sol";
-
-contract ReentrancyGuard {
-    uint256 private _status = 1;
-    modifier nonReentrant() { require(_status == 1); _status = 2; _; _status = 1; }
-}
-
-abstract contract Ownable { 
-    address public owner; 
-    constructor(address _owner) { owner = _owner; } 
-    modifier onlyOwner() { require(msg.sender == owner); _; } 
-} 
 
 interface IERC20 { 
     function transfer(address to, uint256 amount) external returns (bool); 
@@ -33,9 +24,6 @@ library SafeERC20 {
 interface IUniswapV3Pool { 
     function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationCardinality, uint16 observationCardinalityNext, uint16 feeProtocol, uint8 unlocked, bool);
     function liquidity() external view returns (uint128);
-    function tickSpacing() external view returns (int24);
-    function tickBitmap(int16) external view returns (uint256);
-    function ticks(int24) external view returns (uint128 liquidityGross, int128 liquidityNet, uint256 feeGrowthOutside0X128, uint256 feeGrowthOutside1X128, int56 tickCumulativeOutside, uint160 secondsPerLiquidityOutsideX128, uint32 secondsOutside, bool initialized);
 } 
 
 interface IUniswapV3Factory { function getPool(address, address, uint24) external view returns (address); }
