@@ -1,11 +1,6 @@
-.idea/
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
-go.sum
-uniswap-bot
+node_modules/
+hardhat-test/
+foundry-test/
+out/
+cache/
 *.log
