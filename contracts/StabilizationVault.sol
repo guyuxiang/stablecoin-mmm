@@ -15,6 +15,10 @@ interface IERC20 {
     function approve(address spender, uint256 amount) external returns (bool); 
 } 
 
+interface IERC20Metadata is IERC20 { 
+    function decimals() external view returns (uint8); 
+}
+
 library SafeERC20 {
     function safeTransfer(IERC20 t, address to, uint256 a) internal { (bool s,) = address(t).call(abi.encodeCall(IERC20.transfer, (to, a))); require(s); }
     function safeTransferFrom(IERC20 t, address f, address to, uint256 a) internal { (bool s,) = address(t).call(abi.encodeCall(IERC20.transferFrom, (f, to, a))); require(s); }
@@ -24,6 +28,9 @@ library SafeERC20 {
 interface IUniswapV3Pool { 
     function slot0() external view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationCardinality, uint16 observationCardinalityNext, uint16 feeProtocol, uint8 unlocked, bool);
     function liquidity() external view returns (uint128);
+    function tickSpacing() external view returns (int24);
+    function tickBitmap(int16) external view returns (uint256);
+    function ticks(int24) external view returns (uint128 liquidityGross, int128 liquidityNet, uint256 feeGrowthOutside0X128, uint256 feeGrowthOutside1X128, int56 tickCumulativeOutside, uint160 secondsPerLiquidityOutsideX128, uint32 secondsOutside, bool initialized);
 } 
 
 interface IUniswapV3Factory { function getPool(address, address, uint24) external view returns (address); }
@@ -107,26 +114,85 @@ contract StabilizationVault is Ownable, ReentrancyGuard {
         return pool.liquidity();
     }
 
-    function calculateSwapAmount(uint256 _targetPrice) public view returns (uint256) {
+    function calculateSwapAmount(uint256 _targetPrice) public view returns (uint256 amountIn) {
         (uint160 sqrtPriceX96, int24 tick, , , , , ) = pool.slot0();
         uint128 liquidity = pool.liquidity();
-        if (liquidity == 0) return 0;
+        require(liquidity > 0, "No liquidity");
         
-        uint160 sqrtPriceTargetX96 = TickMath.getSqrtRatioAtTick(int24(_targetPrice));
-        uint256 amountIn;
-        uint256 amountOut;
-        uint160 sqrtPriceNextX96;
+        uint160 targetSqrtPriceX96 = _priceToSqrtPriceX96(_targetPrice);
+        (amountIn, , ) = amountInToReachTarget(pool, targetSqrtPriceX96);
         
-        (amountIn, amountOut, sqrtPriceNextX96) = SwapMath.computeSwapStep(
-            sqrtPriceX96,
-            sqrtPriceTargetX96,
-            liquidity,
-            type(int256).max,
-            0,
-            0
-        );
+        uint256 minAmount = 10 ** IERC20Metadata(token0).decimals();
+        if (amountIn < minAmount) amountIn = minAmount;
+    }
+
+    function amountInToReachTarget(IUniswapV3Pool poolAddr, uint160 targetSqrtPriceX96) public view returns (uint256 amountInWithFee, int24 finalTick, uint128 finalLiquidity) {
+        (uint160 sqrtPriceX96, int24 tick, , , , , ) = poolAddr.slot0();
+        uint128 liquidity = poolAddr.liquidity();
+        int24 tickSpacing = poolAddr.tickSpacing();
         
-        return amountIn;
+        require(liquidity > 0);
+        require(targetSqrtPriceX96 != sqrtPriceX96);
+        
+        bool zeroForOne = sqrtPriceX96 > targetSqrtPriceX96;
+        
+        while (sqrtPriceX96 != targetSqrtPriceX96) {
+            (int24 nextTick, ) = _nextInitializedTick(poolAddr, tick, tickSpacing, zeroForOne);
+            
+            if (nextTick < TickMath.MIN_TICK) nextTick = TickMath.MIN_TICK;
+            if (nextTick > TickMath.MAX_TICK) nextTick = TickMath.MAX_TICK;
+            
+            uint160 sqrtPriceNextTickX96 = TickMath.getSqrtRatioAtTick(nextTick);
+            
+            uint160 stepTarget = zeroForOne 
+                ? (sqrtPriceNextTickX96 < targetSqrtPriceX96 ? targetSqrtPriceX96 : sqrtPriceNextTickX96)
+                : (sqrtPriceNextTickX96 > targetSqrtPriceX96 ? targetSqrtPriceX96 : sqrtPriceNextTickX96);
+            
+            (uint256 amountIn, , uint160 sqrtPriceNextX96) = SwapMath.computeSwapStep(
+                sqrtPriceX96, 
+                stepTarget, 
+                liquidity, 
+                type(int256).max, 
+                zeroForOne ? int256(int24(fee)) : int256(0), 
+                zeroForOne ? 0 : type(uint256).max
+            );
+            
+            amountInWithFee += amountIn;
+            sqrtPriceX96 = sqrtPriceNextX96;
+            
+            if (sqrtPriceX96 == sqrtPriceNextTickX96) {
+                (, int128 liquidityNet, , , , , , ) = poolAddr.ticks(nextTick);
+                liquidity = LiquidityMath.addDelta(liquidity, zeroForOne ? -liquidityNet : liquidityNet);
+                tick = zeroForOne ? nextTick - 1 : nextTick;
+            } else {
+                tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+            }
+            
+            if (sqrtPriceX96 == targetSqrtPriceX96) break;
+        }
+        
+        finalTick = tick;
+        finalLiquidity = liquidity;
+    }
+
+    function _nextInitializedTick(IUniswapV3Pool poolAddr, int24 tick, int24 ts, bool zf1) internal view returns (int24, bool) {
+        int24 compressed = tick / ts;
+        if (tick < 0 && tick % ts != 0) compressed--;
+        return _nextInitializedTickWithinOneWord(poolAddr, compressed, ts, zf1);
+    }
+
+    function _nextInitializedTickWithinOneWord(IUniswapV3Pool poolAddr, int24 ct, int24 ts, bool lte) internal view returns (int24, bool) {
+        (int16 wp, uint8 bp) = TickBitmap.position(ct);
+        uint256 w = poolAddr.tickBitmap(wp);
+        return TickBitmap.nextInitializedTickWithinOneWord(w, ct, ts, lte);
+    }
+
+    function _priceToSqrtPriceX96(uint256 p) internal pure returns (uint160) { 
+        return TickMath.getSqrtRatioAtTick(_priceToTick(p)); 
+    }
+    
+    function _priceToTick(uint256 p) internal pure returns (int24) { 
+        return TickMath.getTickAtSqrtRatio(TickMath.getSqrtRatioAtTick(p)); 
     }
 
     function executeArbitrage() external onlyOwner nonReentrant returns (bool) {
@@ -143,10 +209,14 @@ contract StabilizationVault is Ownable, ReentrancyGuard {
         address tokenIn = zeroForOne ? token0 : token1;
         address tokenOut = zeroForOne ? token1 : token0;
         
-        uint256 balanceInBefore = IERC20(tokenIn).balanceOf(address(this));
-        require(balanceInBefore > 0, "No balance");
+        // Calculate amountIn using the multi-tick logic
+        uint256 amountIn = calculateSwapAmount(targetPrice);
+        require(amountIn > 0, "Invalid amount");
         
-        IERC20(tokenIn).forceApprove(address(swapRouter), balanceInBefore);
+        uint256 balBefore = IERC20(tokenIn).balanceOf(address(this));
+        require(balBefore >= amountIn, "Insufficient balance");
+        
+        IERC20(tokenIn).forceApprove(address(swapRouter), amountIn);
         
         uint256 amountOut = ISwapRouter(address(swapRouter)).exactInputSingle(ISwapRouter.ExactInputSingleParams({
             tokenIn: tokenIn,
@@ -154,7 +224,7 @@ contract StabilizationVault is Ownable, ReentrancyGuard {
             fee: fee,
             recipient: address(this),
             deadline: block.timestamp,
-            amountIn: balanceInBefore,
+            amountIn: amountIn,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         }));
@@ -172,7 +242,7 @@ contract StabilizationVault is Ownable, ReentrancyGuard {
             reserve1 = balanceInAfter;
         }
         
-        emit ArbitrageExecuted(balanceInBefore, amountOut, true);
+        emit ArbitrageExecuted(amountIn, amountOut, true);
         return true;
     }
 
