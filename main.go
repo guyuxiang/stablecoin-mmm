@@ -28,12 +28,6 @@ import (
 	"uniswap-bot/pkg/uniswap"
 )
 
-const (
-	CreatePoolAction   = "create-pool"
-	AddLiquidityAction = "add-liquidity"
-	StartBotAction     = "start"
-)
-
 var (
 	cfg             *config.Config
 	uniswapClient   *uniswap.Client
@@ -48,16 +42,7 @@ var (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
-	}
-
-	action := os.Args[1]
 	cfgPath := "config.yaml"
-	if len(os.Args) > 2 {
-		cfgPath = os.Args[2]
-	}
 
 	var err error
 	cfg, err = config.Load(cfgPath)
@@ -68,32 +53,7 @@ func main() {
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
 
-	switch action {
-	case CreatePoolAction:
-		handleCreatePool()
-	case AddLiquidityAction:
-		handleAddLiquidity()
-	case StartBotAction:
-		handleStartBot()
-	default:
-		fmt.Printf("Unknown action: %s\n", action)
-		printUsage()
-		os.Exit(1)
-	}
-}
-
-func printUsage() {
-	fmt.Println("Usage: uniswap-bot <command> [config_file]")
-	fmt.Println()
-	fmt.Println("Commands:")
-	fmt.Println("  create-pool     Create a new Uniswap V3 pool")
-	fmt.Println("  add-liquidity  Add liquidity to the pool")
-	fmt.Println("  start          Start the market making bot")
-	fmt.Println()
-	fmt.Println("Examples:")
-	fmt.Println("  uniswap-bot create-pool config.yaml")
-	fmt.Println("  uniswap-bot add-liquidity config.yaml")
-	fmt.Println("  uniswap-bot start config.yaml")
+	handleStartBot()
 }
 
 func handleCreatePool() {
@@ -124,11 +84,11 @@ func handleCreatePool() {
 	fmt.Println()
 
 	methodID := crypto.Keccak256([]byte("createPool(address,address,uint24)"))[:4]
-	
+
 	token0Bytes := common.LeftPadBytes(token0.Bytes(), 32)
 	token1Bytes := common.LeftPadBytes(token1.Bytes(), 32)
 	feeBytes := common.LeftPadBytes(big.NewInt(int64(fee)).Bytes(), 32)
-	
+
 	input := append(methodID, append(token0Bytes, append(token1Bytes, feeBytes...)...)...)
 
 	gasPrice, err := client.SuggestGasPrice(ctx)
