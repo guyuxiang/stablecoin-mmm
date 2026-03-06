@@ -8,8 +8,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"uniswap-bot/config"
-	"uniswap-bot/pkg/contracts"
+	"stablecoin-mmm/config"
+	"stablecoin-mmm/pkg/contracts"
 )
 
 type Token struct {

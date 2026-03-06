@@ -236,13 +236,13 @@ See `address.md` for detailed contract addresses on# Quick Start
 ## 1. Build
 
 ```bash
-go build -o uniswap-bot .
+go build -o stablecoin-mmm .
 ```
 
 ## 2. Create Pool
 
 ```bash
-./uniswap-bot create-pool config.yaml
+./stablecoin-mmm create-pool config.yaml
 ```
 
 Output:
@@ -255,13 +255,13 @@ Fill the pool address into `config.yaml` `pool_address`.
 ## 3. Add Liquidity
 
 ```bash
-./uniswap-bot add-liquidity config.yaml
+./stablecoin-mmm add-liquidity config.yaml
 ```
 
 ## 4. Start Bot
 
 ```bash
-./uniswap-bot start config.yaml
+./stablecoin-mmm start config.yaml
 ```
 
 ## 5. Web Admin Interface
@@ -282,7 +282,7 @@ Visit: http://localhost:8080
 # Project Structure
 
 ```
-uniswap-bot/
+stablecoin-mmm/
 ├── main.go                    # Main entry point
 ├── config.yaml                # Configuration file
 ├── address.md                # Contract addresses

@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"uniswap-bot/pkg/position"
-	"uniswap-bot/pkg/rebalancer"
-	"uniswap-bot/pkg/risk"
+	"stablecoin-mmm/pkg/position"
+	"stablecoin-mmm/pkg/rebalancer"
+	"stablecoin-mmm/pkg/risk"
 )
 
 type Metrics struct {

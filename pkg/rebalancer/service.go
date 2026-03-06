@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"uniswap-bot/config"
-	"uniswap-bot/pkg/executor"
-	"uniswap-bot/pkg/position"
-	"uniswap-bot/pkg/risk"
-	"uniswap-bot/pkg/uniswap"
+	"stablecoin-mmm/config"
+	"stablecoin-mmm/pkg/executor"
+	"stablecoin-mmm/pkg/position"
+	"stablecoin-mmm/pkg/risk"
+	"stablecoin-mmm/pkg/uniswap"
 )
 
 type Rebalancer struct {
@@ -83,12 +83,12 @@ func (r *Rebalancer) calculateDeviation() float64 {
 	// Use big.Float for precision
 	diff := new(big.Float).Sub(r.currentPrice, r.twapPrice)
 	absDiff := new(big.Float).Abs(diff)
-	
+
 	// Avoid division by zero
 	if r.twapPrice.Sign() == 0 {
 		return 0.0
 	}
-	
+
 	deviation := new(big.Float).Quo(absDiff, r.twapPrice)
 	dev, _ := deviation.Float64()
 	return dev
@@ -161,19 +161,19 @@ func (r *Rebalancer) ExecuteStabilization(ctx context.Context) error {
 	// Retry mechanism
 	maxRetries := 3
 	var lastErr error
-	
+
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		log.Printf("=== Stabilization attempt %d/%d ===", attempt, maxRetries)
-		
+
 		err := r.doStabilization(ctx)
 		if err == nil {
 			log.Printf("Stabilization successful on attempt %d", attempt)
 			return nil
 		}
-		
+
 		lastErr = err
 		log.Printf("Stabilization attempt %d failed: %v", attempt, err)
-		
+
 		// Wait before retry
 		if attempt < maxRetries {
 			waitTime := time.Duration(attempt) * 2 * time.Second
@@ -181,7 +181,7 @@ func (r *Rebalancer) ExecuteStabilization(ctx context.Context) error {
 			time.Sleep(waitTime)
 		}
 	}
-	
+
 	return fmt.Errorf("stabilization failed after %d attempts: %w", maxRetries, lastErr)
 }
 
@@ -261,7 +261,7 @@ func (r *Rebalancer) doStabilization(ctx context.Context) error {
 		return fmt.Errorf("stabilization tx failed: %s", result.TxHash)
 	}
 
-	log.Printf("Stabilization successful! Tx: %s, AmountIn: %s, AmountOut: %s", 
+	log.Printf("Stabilization successful! Tx: %s, AmountIn: %s, AmountOut: %s",
 		result.TxHash, amountIn.String(), result.Amount0.String())
 
 	r.lastStabilize = time.Now()

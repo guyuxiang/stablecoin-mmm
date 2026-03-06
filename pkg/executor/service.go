@@ -15,8 +15,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"uniswap-bot/config"
-	"uniswap-bot/pkg/contracts"
+	"stablecoin-mmm/config"
+	"stablecoin-mmm/pkg/contracts"
 )
 
 type ExecutionResult struct {
@@ -508,13 +508,13 @@ func (e *Executor) GetTierPositions(ctx context.Context) ([]TierPosition, error)
 	// Get pool liquidity via contract binding
 	poolLiquidity := big.NewInt(0)
 	currentTick := int32(0)
-	
+
 	if e.pool != nil {
 		liq, err := e.pool.Liquidity(&bind.CallOpts{Context: ctx})
 		if err == nil {
 			poolLiquidity = liq
 		}
-		
+
 		// Get current tick from slot0
 		slot0, err := e.pool.Slot0(&bind.CallOpts{Context: ctx})
 		if err == nil {
@@ -528,7 +528,7 @@ func (e *Executor) GetTierPositions(ctx context.Context) ([]TierPosition, error)
 	coreBps := int(e.cfg.Bot.CoreRangeBps)
 	midBps := int(e.cfg.Bot.MidRangeBps)
 	tailBps := int(e.cfg.Bot.TailRangeBps)
-	
+
 	// Calculate tick ranges
 	coreLower := currentTick - int32(coreBps)
 	coreUpper := currentTick + int32(coreBps)
@@ -536,7 +536,7 @@ func (e *Executor) GetTierPositions(ctx context.Context) ([]TierPosition, error)
 	midUpper := currentTick + int32(midBps)
 	tailLower := currentTick - int32(tailBps)
 	tailUpper := currentTick + int32(tailBps)
-	
+
 	// Get sqrtPriceX96 for calculations
 	sqrtPriceX96 := big.NewInt(0)
 	if e.pool != nil {

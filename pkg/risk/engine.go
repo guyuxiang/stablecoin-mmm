@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"time"
 
-	"uniswap-bot/config"
+	"stablecoin-mmm/config"
 )
 
 type RiskCheck struct {

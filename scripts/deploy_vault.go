@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	uniswapbot "uniswap-bot/pkg/uniswap"
+	uniswapbot "stablecoin-mmm/pkg/uniswap"
 )
 
 func main() {
@@ -70,7 +70,7 @@ func main() {
 		log.Printf("Warning: Failed to create Uniswap client: %v", err)
 	} else {
 		ctx := context.Background()
-		
+
 		// Get slot0
 		slot0, err := uniswapClient.GetSlot0(ctx)
 		if err != nil {
@@ -80,7 +80,7 @@ func main() {
 			fmt.Printf("SqrtPriceX96: %s\n", slot0.SqrtPriceX96.String())
 			fmt.Printf("Tick: %d\n", slot0.Tick)
 			fmt.Printf("Liquidity: %s\n", slot0.Liquidity.String())
-			
+
 			// Calculate price
 			price := new(big.Float).Quo(
 				new(big.Float).SetInt(slot0.SqrtPriceX96),

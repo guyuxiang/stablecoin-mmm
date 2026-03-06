@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"uniswap-bot/config"
-	"uniswap-bot/pkg/uniswap"
+	"stablecoin-mmm/config"
+	"stablecoin-mmm/pkg/uniswap"
 )
 
 type PriceOracle struct {

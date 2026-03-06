@@ -17,15 +17,15 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"uniswap-bot/config"
-	"uniswap-bot/pkg/api"
-	"uniswap-bot/pkg/executor"
-	"uniswap-bot/pkg/monitor"
-	"uniswap-bot/pkg/oracle"
-	"uniswap-bot/pkg/position"
-	"uniswap-bot/pkg/rebalancer"
-	"uniswap-bot/pkg/risk"
-	"uniswap-bot/pkg/uniswap"
+	"stablecoin-mmm/config"
+	"stablecoin-mmm/pkg/api"
+	"stablecoin-mmm/pkg/executor"
+	"stablecoin-mmm/pkg/monitor"
+	"stablecoin-mmm/pkg/oracle"
+	"stablecoin-mmm/pkg/position"
+	"stablecoin-mmm/pkg/rebalancer"
+	"stablecoin-mmm/pkg/risk"
+	"stablecoin-mmm/pkg/uniswap"
 )
 
 var (

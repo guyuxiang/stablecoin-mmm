@@ -11,12 +11,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
-	"uniswap-bot/config"
-	"uniswap-bot/pkg/executor"
-	"uniswap-bot/pkg/monitor"
-	"uniswap-bot/pkg/position"
-	"uniswap-bot/pkg/rebalancer"
-	"uniswap-bot/pkg/risk"
+	"stablecoin-mmm/config"
+	"stablecoin-mmm/pkg/executor"
+	"stablecoin-mmm/pkg/monitor"
+	"stablecoin-mmm/pkg/position"
+	"stablecoin-mmm/pkg/rebalancer"
+	"stablecoin-mmm/pkg/risk"
 )
 
 type Server struct {
